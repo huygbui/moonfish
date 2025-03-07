@@ -2,7 +2,6 @@ import apsw
 import apsw.ext
 import apsw.bestpractice
 
-from pathlib import Path
 from textwrap import dedent
 from config import DB_PATH
 
