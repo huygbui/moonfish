@@ -12,12 +12,21 @@ conn = apsw.Connection(DB_PATH)
 conn.execute("DROP TABLE IF EXISTS users")
 with conn:
     conn.execute(dedent("""
+        CREATE TABLE IF NOT EXISTS tiers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            monthly_credits INTEGER NOT NULL,
+            price INTEGER NOT NULL
+        )
+    """))
+
+    conn.execute(dedent("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             apple_id TEXT UNIQUE,
             email TEXT NOT NULL UNIQUE,
             name TEXT,
-            balance INTEGER DEFAULT 3,
+            balance INTEGER DEFAULT 3 NOT NULL,
             tier_id INTEGER,
             reset_at TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -29,15 +38,14 @@ with conn:
     conn.execute(dedent("""
         CREATE TABLE IF NOT EXISTS podcasts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            topic TEXT,
-            transcript TEXT,
+            user_id INTEGER NOT NULL,
+            topic TEXT NOT NULL,
             title TEXT,
-            status TEXT DEFAULT 'pending',
-            credits_used INTEGER,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'error')),
+            credits_used INTEGER DEFAULT 0 NOT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
     """))
 
@@ -49,7 +57,7 @@ with conn:
             content TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(podcast_id, created_at),
-            FOREIGN KEY (podcast_id) REFERENCES podcasts (id)
+            FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
         )
     """))
 
@@ -57,33 +65,34 @@ with conn:
         CREATE TABLE IF NOT EXISTS preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             podcast_id INTEGER UNIQUE,
-            level TEXT,
-            length TEXT,
-            style TEXT,
+            level TEXT CHECK(level IN ('beginner', 'intermediate', 'advanced')),
+            length TEXT CHECK(length IN ('short', 'medium', 'long')),
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (podcast_id) REFERENCES PODCASTS (id)
+            FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
         )
+    """))
+
+    conn.execute(dedent("""
+        CREATE TABLE IF NOT EXISTS transcripts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            podcast_id INTEGER NOT NULL UNIQUE,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
+        );
     """))
 
     conn.execute(dedent("""
         CREATE TABLE IF NOT EXISTS audio (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            podcast_id INTEGER UNIQUE,
-            path TEXT,
+            podcast_id INTEGER NOT NULL UNIQUE,
+            path TEXT NOT NULL,
             duration INTEGER,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (podcast_id) REFERENCES podcasts (id)
+            FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
         )
     """))
 
-    conn.execute(dedent("""
-        CREATE TABLE IF NOT EXISTS tiers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            monthly_credits INTEGER,
-            price INTEGER
-        )
-    """))
 
 qry = "SELECT * FROM users"
 print(apsw.ext.format_query_table(conn, qry))
