@@ -1,3 +1,4 @@
+# type: ignore
 from dataclasses import asdict
 import os
 
@@ -13,27 +14,26 @@ apsw.ext.log_sqlite()
 
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-def get_conn():
+def _conn(dc=False):
     conn = apsw.Connection(DB_PATH)
-    conn.row_trace = apsw.ext.DataClassRowFactory()
+    if dc: conn.row_trace = apsw.ext.DataClassRowFactory()
     return conn
 
 def query_one(query, params=()):
-    with get_conn() as conn:
+    with _conn(dc=True) as conn:
         row = conn.execute(query, params).fetchone()
         if row: return asdict(row)
         return None
 
 def query_all(query, params=()):
-    with get_conn() as conn:
+    with _conn(dc=True) as conn:
         rows = conn.execute(query, params).fetchall()
-        # pyright: ignore
         if rows: return [asdict(row) for row in rows]
         return []
 
 # def insert(table, data):
 #     """Insert data into a table and return the ID"""
-#     with get_conn() as conn:
+#     with _conn() as conn:
 #         columns = ", ".join(data.keys())
 #         placeholders = ", ".join(["?"] * len(data))
 #         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
@@ -43,7 +43,7 @@ def query_all(query, params=()):
 
 # def update(table, id, data):
 #     """Update data in a table by ID"""
-#     with get_conn() as conn:
+#     with _conn() as conn:
 #         set_clause = ", ".join([f"{key} = ?" for key in data.keys()])
 #         query = f"UPDATE {table} SET {set_clause} WHERE id = ?"
 #         cursor = conn.cursor()
@@ -52,7 +52,7 @@ def query_all(query, params=()):
 
 def init_db():
     """Initialize the database with tables"""
-    with get_conn() as conn:
+    with _conn() as conn:
         # Tiers table
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS tiers (

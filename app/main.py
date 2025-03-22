@@ -1,9 +1,7 @@
-import apsw
-
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from .database import get_conn, init_db
+from .database import init_db, query_one, query_all
 
 app = FastAPI(title="moonfish")
 
@@ -24,7 +22,7 @@ def index():
     return {"message": "Hello, World!"}
 
 @app.get("/test")
-def test_db(conn: apsw.Connection = Depends(get_conn)):
-    with conn:
-        rows = conn.execute("SELECT * FROM tiers").fetchall()
-        return {"tiers": rows}
+def test_db():
+    qry = "SELECT * FROM tiers"
+    rows = query_all(qry)
+    return rows
