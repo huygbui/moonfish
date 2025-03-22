@@ -50,10 +50,22 @@ def query_all(query, params=()):
 #         cursor.execute(query, list(data.values()) + [id])
 #         return id
 
-def init_db():
+def init_db(replace=False):
     """Initialize the database with tables"""
     with _conn() as conn:
         # Tiers table
+        if replace:
+            conn.execute(dedent("""
+                DROP TABLE IF EXISTS tiers;
+                DROP TABLE IF EXISTS users;
+                DROP TABLE IF EXISTS subscriptions;
+                DROP TABLE IF EXISTS transactions;
+                DROP TABLE IF EXISTS podcasts;
+                DROP TABLE IF EXISTS preferences;
+                DROP TABLE IF EXISTS audio;
+                DROP TABLE IF EXISTS transcripts;
+            """))
+
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS tiers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,9 +83,10 @@ def init_db():
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                apple_id TEXT UNIQUE,
-                email TEXT NOT NULL UNIQUE,
-                name TEXT,
+                apple_id TEXT NOT NULL UNIQUE,
+                email TEXT UNIQUE,
+                firstname TEXT,
+                lastname TEXT,
                 balance INTEGER DEFAULT 3 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -133,9 +146,10 @@ def init_db():
             CREATE TABLE IF NOT EXISTS preferences (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 podcast_id INTEGER NOT NULL UNIQUE,
-                level TEXT CHECK (level IN ('beginner', 'intermediate', 'advanced')),
-                length TEXT CHECK (length IN ('5', '10', '15', '20')),
                 voice_id TEXT DEFAULT 'default',
+                level TEXT CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+                length TEXT CHECK (length IN ('5', '10', '15')),
+                custom_instruction TEXT,
                 FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
             );
         """))
@@ -157,18 +171,6 @@ def init_db():
             CREATE TABLE IF NOT EXISTS transcripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 podcast_id INTEGER NOT NULL UNIQUE,
-                content TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
-            );
-        """))
-
-        # Conversations table
-        conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS conversations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                podcast_id INTEGER NOT NULL,
-                role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
