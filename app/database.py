@@ -1,5 +1,3 @@
-# type: ignore
-from dataclasses import asdict
 import os
 
 import apsw
@@ -21,25 +19,18 @@ def _conn(dc=False):
 
 def query_one(query, params=()):
     with _conn(dc=True) as conn:
-        row = conn.execute(query, params).fetchone()
-        if row: return asdict(row)
-        return None
+        return conn.execute(query, params).fetchone()
 
 def query_all(query, params=()):
     with _conn(dc=True) as conn:
-        rows = conn.execute(query, params).fetchall()
-        if rows: return [asdict(row) for row in rows]
-        return []
+        return conn.execute(query, params).fetchall()
 
-# def insert(table, data):
-#     """Insert data into a table and return the ID"""
-#     with _conn() as conn:
-#         columns = ", ".join(data.keys())
-#         placeholders = ", ".join(["?"] * len(data))
-#         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-#         cursor = conn.cursor()
-#         cursor.execute(query, list(data.values()))
-#         return conn.last_insert_rowid()
+def insert(table, data):
+    with _conn(dc=True) as conn:
+        columns = ", ".join(data.keys())
+        placeholders = ", ".join(["?"] * len(data))
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders}) RETURNING *;"
+        return conn.execute(query, tuple(data.values())).fetchone()
 
 # def update(table, id, data):
 #     """Update data in a table by ID"""
@@ -55,16 +46,16 @@ def init_db(replace=False):
     with _conn() as conn:
         # Tiers table
         if replace:
-            conn.execute(dedent("""
-                DROP TABLE IF EXISTS tiers;
-                DROP TABLE IF EXISTS users;
-                DROP TABLE IF EXISTS subscriptions;
-                DROP TABLE IF EXISTS transactions;
-                DROP TABLE IF EXISTS podcasts;
-                DROP TABLE IF EXISTS preferences;
-                DROP TABLE IF EXISTS audio;
-                DROP TABLE IF EXISTS transcripts;
-            """))
+            conn.execute("DROP TABLE IF EXISTS transcripts")
+            conn.execute("DROP TABLE IF EXISTS audio")
+            conn.execute("DROP TABLE IF EXISTS preferences")
+            conn.execute("DROP TABLE IF EXISTS podcasts")
+            conn.execute("DROP TABLE IF EXISTS transactions")
+            conn.execute("DROP TABLE IF EXISTS subscriptions")
+            conn.execute("DROP TABLE IF EXISTS auths")
+            conn.execute("DROP TABLE IF EXISTS sessions")
+            conn.execute("DROP TABLE IF EXISTS users")
+            conn.execute("DROP TABLE IF EXISTS tiers")
 
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS tiers (
@@ -83,30 +74,36 @@ def init_db(replace=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                apple_id TEXT NOT NULL UNIQUE,
                 email TEXT UNIQUE,
-                firstname TEXT,
-                lastname TEXT,
+                first_name TEXT,
+                last_name TEXT,
                 balance INTEGER DEFAULT 3 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """))
 
-        # Subscriptions table
+        # Auths table
         conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS subscriptions (
+            CREATE TABLE IF NOT EXISTS auths (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                tier_id INTEGER NOT NULL,
-                status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'trial', 'canceled')),
-                original_transaction_id TEXT,
-                latest_receipt TEXT,
-                expiration_date TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-                FOREIGN KEY (tier_id) REFERENCES tiers (id) ON DELETE CASCADE
+                provider TEXT NOT NULL,
+                provider_user_id TEXT NOT NULL,
+                refresh_token TEXT,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            );
+        """))
+
+        # Sessions table
+        conn.execute(dedent("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                session_token TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))
 
