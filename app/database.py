@@ -32,14 +32,11 @@ def insert(table, data):
         query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders}) RETURNING *;"
         return conn.execute(query, tuple(data.values())).fetchone()
 
-# def update(table, id, data):
-#     """Update data in a table by ID"""
-#     with _conn() as conn:
-#         set_clause = ", ".join([f"{key} = ?" for key in data.keys()])
-#         query = f"UPDATE {table} SET {set_clause} WHERE id = ?"
-#         cursor = conn.cursor()
-#         cursor.execute(query, list(data.values()) + [id])
-#         return id
+def update(table, id, data):
+    with _conn(dc=True) as conn:
+        clause = ", ".join([f"{key} = ?" for key in data.keys()])
+        query = f"UPDATE {table} SET {clause} WHERE id = ?"
+        return conn.execute(query, tuple(data.values())).fetchone()
 
 def init_db(replace=False):
     """Initialize the database with tables"""
@@ -91,6 +88,8 @@ def init_db(replace=False):
                 provider TEXT NOT NULL,
                 provider_user_id TEXT NOT NULL,
                 refresh_token TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))
@@ -100,9 +99,10 @@ def init_db(replace=False):
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
-                session_token TEXT NOT NULL,
+                token TEXT NOT NULL,
                 expires_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))

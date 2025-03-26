@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from dotenv import load_dotenv
 from textwrap import dedent
 
-from .database import query_one, insert
+from .database import query_one, insert, update
 from .model import UserSignup
 
 load_dotenv(".env")
@@ -38,15 +38,36 @@ def create_session_token(provider:str, sub:str, user_data:Optional[UserSignup]=N
                 "provider_user_id": sub,
             }
         )
-    payload = {
-        "user_id": auth.user_id,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-    }
-    return jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm='HS256')
+        payload={ "user_id": auth.user_id, }
+        print(datetime.datetime.utcnow() + datetime.timedelta(hours=24))
+        session_token=jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm='HS256')
+        session=insert(
+            table="sessions",
+            data={
+                "user_id": auth.user_id,
+                "token": session_token,
+                "expires_at": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+            }
+        )
+    else:
+        now = datetime.datetime.utcnow()
+        session = query_one("SELECT token, expires_at FROM sessions WHERE sessions.user_id=? ", (auth.user_id,))
+        if session.expires_at < now:
+            exp = now + datetime.timedelta(hours=24)
+            session = update(
+                table="sessions",
+                data={
+                    "expires_at": exp,
+                    "updated_at": now
+                },
+                where="id=?",
+                values=(session.id,)
+            )
+    return session.token
 
-async def verify_session_token(id_token:str) -> dict:
+async def verify_session_token(token:str) -> dict:
     payload = jwt.decode(
-        id_token,
+        token,
         os.getenv("JWT_SECRET"),
         algorithms=["HS256"]
     )
