@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 
 from .database import init_db, query_one
-from .model import AppleAuthRequest, TokenResponse
+from .model import AppleAuthRequest, SessionTokenResponse
 from .auth import exchange_for_tokens, verify_session_token, create_session_token
 
 app = FastAPI(title="moonfish")
@@ -38,7 +38,7 @@ def index():
 def me(user: Dict[str,str] = Depends(get_current_user)):
     return user
 
-@app.post("/auth/apple", response_model=TokenResponse)
+@app.post("/auth/apple", response_model=SessionTokenResponse)
 async def handle_apple_auth(req: AppleAuthRequest):
     try:
         # TODO: Exchange code for tokens
@@ -51,7 +51,8 @@ async def handle_apple_auth(req: AppleAuthRequest):
         # email = decoded.get("email")
         # name = {}
         sub = "mock_sub"
-        session_token = create_session_token("apple", sub, req.user)
-        return TokenResponse(token=session_token)
+        refresh_token = "mock_refresh"
+        session_token = create_session_token("apple", sub, refresh_token, req.user)
+        return SessionTokenResponse(token=session_token)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Something went wrong: {e}")

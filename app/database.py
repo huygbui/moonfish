@@ -75,8 +75,7 @@ def init_db(replace=False):
                 first_name TEXT,
                 last_name TEXT,
                 balance INTEGER DEFAULT 3 NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """))
 
@@ -89,7 +88,6 @@ def init_db(replace=False):
                 provider_user_id TEXT NOT NULL,
                 refresh_token TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))
@@ -102,7 +100,6 @@ def init_db(replace=False):
                 token TEXT NOT NULL,
                 expires_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))
@@ -133,7 +130,6 @@ def init_db(replace=False):
                 status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
                 credits_used INTEGER DEFAULT 1 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """))
@@ -172,15 +168,6 @@ def init_db(replace=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
             );
-        """))
-
-        # Create trigger for user timestamps
-        conn.execute(dedent("""
-            CREATE TRIGGER IF NOT EXISTS update_user_timestamp
-            AFTER UPDATE ON users
-            BEGIN
-                UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-            END;
         """))
 
         # Insert default tiers

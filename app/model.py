@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 class UserSignupName(BaseModel):
@@ -14,5 +14,9 @@ class AppleAuthRequest(BaseModel):
     state: Optional[str] = None
     user: Optional[UserSignup] = None
 
-class TokenResponse(BaseModel):
+class AuthTokenResponse(BaseModel):
+    id_token: str
+    refresh_token: Optional[str] = None
+
+class SessionTokenResponse(BaseModel):
     token: str

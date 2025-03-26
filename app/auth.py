@@ -1,26 +1,26 @@
 import jwt
 import time
-import datetime
 import os
 
 from typing import Optional, Dict
 from fastapi import HTTPException, status
 from dotenv import load_dotenv
 from textwrap import dedent
+from datetime import datetime, timedelta, UTC
 
 from .database import query_one, insert, update
-from .model import UserSignup
+from .model import UserSignup, AuthTokenResponse
 
 load_dotenv(".env")
 
-async def exchange_for_tokens(code:str) -> dict:
+async def exchange_for_tokens(code:str) -> AuthTokenResponse:
     pass
 
 async def verify_id_token(id_token:str) -> dict:
     pass
 
-def create_session_token(provider:str, sub:str, user_data:Optional[UserSignup]=None) -> str:
-    auth = query_one("SELECT user_id FROM auths WHERE auths.provider=? AND auths.provider_user_id=? ", (provider, sub,))
+def create_session_token(provider:str, provider_user_id:str, refresh_token:Optional[str]=None, user_data:Optional[UserSignup]=None) -> str:
+    auth = query_one("SELECT user_id FROM auths WHERE auths.provider=? AND auths.provider_user_id=? ", (provider, provider_user_id,))
     if not auth:
         user = insert(
             table="users",
@@ -35,31 +35,28 @@ def create_session_token(provider:str, sub:str, user_data:Optional[UserSignup]=N
             data={
                 "user_id": user.id,
                 "provider": provider,
-                "provider_user_id": sub,
+                "provider_user_id": provider_user_id,
+                "refresh_token": refresh_token,
             }
         )
-        payload={ "user_id": auth.user_id, }
-        print(datetime.datetime.utcnow() + datetime.timedelta(hours=24))
-        session_token=jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm='HS256')
-        session=insert(
+        payload = {"user_id": auth.user_id}
+        session_token = jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm='HS256')
+        session = insert(
             table="sessions",
             data={
                 "user_id": auth.user_id,
                 "token": session_token,
-                "expires_at": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
+                "expires_at": (datetime.now(UTC) + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
             }
         )
     else:
-        now = datetime.datetime.utcnow()
         session = query_one("SELECT token, expires_at FROM sessions WHERE sessions.user_id=? ", (auth.user_id,))
-        if session.expires_at < now:
-            exp = now + datetime.timedelta(hours=24)
+        expires_at = datetime.strptime(session.expires_at, "%Y-%m-%d %H:%M:%S")
+        if expires_at < datetime.now(UTC):
+            # TODO: validate refresh token for apple
             session = update(
                 table="sessions",
-                data={
-                    "expires_at": exp,
-                    "updated_at": now
-                },
+                data={"expires_at": (datetime.now(UTC) + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")},
                 where="id=?",
                 values=(session.id,)
             )
