@@ -81,7 +81,7 @@ def init_db(replace=False):
 
         # Auths table
         conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS auths (
+            CREATE TABLE IF NOT EXISTS auth_accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 provider TEXT NOT NULL,
@@ -94,7 +94,7 @@ def init_db(replace=False):
 
         # Sessions table
         conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS sessions (
+            CREATE TABLE IF NOT EXISTS auth_sessions (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 token TEXT NOT NULL,

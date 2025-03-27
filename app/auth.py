@@ -20,7 +20,7 @@ async def verify_id_token(id_token:str) -> dict:
     pass
 
 def create_session_token(provider:str, provider_user_id:str, refresh_token:Optional[str]=None, user_data:Optional[UserSignup]=None) -> str:
-    auth = query_one("SELECT user_id FROM auths WHERE auths.provider=? AND auths.provider_user_id=? ", (provider, provider_user_id,))
+    auth = query_one("SELECT user_id FROM auth_accounts WHERE auth_accounts.provider=? AND auth_accounts.provider_user_id=? ", (provider, provider_user_id,))
     if not auth:
         user = insert(
             table="users",
@@ -31,7 +31,7 @@ def create_session_token(provider:str, provider_user_id:str, refresh_token:Optio
             }
         )
         auth = insert(
-            table="auths",
+            table="auth_accounts",
             data={
                 "user_id": user.id,
                 "provider": provider,
@@ -42,7 +42,7 @@ def create_session_token(provider:str, provider_user_id:str, refresh_token:Optio
         payload = {"user_id": auth.user_id}
         session_token = jwt.encode(payload, os.getenv("JWT_SECRET"), algorithm='HS256')
         session = insert(
-            table="sessions",
+            table="auth_sessions",
             data={
                 "user_id": auth.user_id,
                 "token": session_token,
@@ -50,12 +50,12 @@ def create_session_token(provider:str, provider_user_id:str, refresh_token:Optio
             }
         )
     else:
-        session = query_one("SELECT token, expires_at FROM sessions WHERE sessions.user_id=? ", (auth.user_id,))
+        session = query_one("SELECT token, expires_at FROM auth_sessions WHERE auth_sessions.user_id=? ", (auth.user_id,))
         expires_at = datetime.strptime(session.expires_at, "%Y-%m-%d %H:%M:%S")
         if expires_at < datetime.now(UTC):
             # TODO: validate refresh token for apple
             session = update(
-                table="sessions",
+                table="auth_sessions",
                 data={"expires_at": (datetime.now(UTC) + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")},
                 where="id=?",
                 values=(session.id,)
