@@ -4,53 +4,73 @@ import apsw
 import apsw.ext
 import apsw.bestpractice
 
+from typing import Optional, Dict, Generator
 from textwrap import dedent
-from .config import DB_PATH
+from app.config import DB_PATH
 
 apsw.bestpractice.apply(apsw.bestpractice.recommended)
 apsw.ext.log_sqlite()
 
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+class DB:
+    def __init__(self, path, dc):
+        self._conn = apsw.Connection(path)
+        if dc: self._conn.row_trace = apsw.ext.DataClassRowFactory()
 
-def _conn(dc=False):
-    conn = apsw.Connection(DB_PATH)
-    if dc: conn.row_trace = apsw.ext.DataClassRowFactory()
-    return conn
+    @property
+    def conn(self):
+        return self._conn
 
-def query_one(query, params=()):
-    with _conn(dc=True) as conn:
-        return conn.execute(query, params).fetchone()
+    def close(self):
+        self._conn.close()
+        self._conn = None
 
-def query_all(query, params=()):
-    with _conn(dc=True) as conn:
-        return conn.execute(query, params).fetchall()
+    def select(self, table, columns, where:Optional[Dict]=None, limit:Optional[int]=None):
+        select_clause = ", ".join(columns)
+        bindings = []
+        statements = f"select {select_clause} from {table}"
+        if where:
+            where_clause = " and ".join([f"{key} = ?" for key in where.keys()])
+            statements += f" where {where_clause}"
+            bindings.extend(where.values())
+        if limit:
+            statements += " limit ?"
+            bindings.append(limit)
+        return self._conn.execute(statements, tuple(bindings))
 
-def insert(table, data):
-    with _conn(dc=True) as conn:
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join(["?"] * len(data))
-        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders}) RETURNING *;"
-        return conn.execute(query, tuple(data.values())).fetchone()
+    def insert(self, table, values):
+        columns = ", ".join(values.keys())
+        placeholders = ", ".join(["?"] * len(values))
+        statements = f"insert into {table} ({columns}) values ({placeholders}) returning *;"
+        bindings = tuple(values.values())
+        return self._conn.execute(statements, bindings)
 
-def update(table, id, data):
-    with _conn(dc=True) as conn:
-        clause = ", ".join([f"{key} = ?" for key in data.keys()])
-        query = f"UPDATE {table} SET {clause} WHERE id = ?"
-        return conn.execute(query, tuple(data.values())).fetchone()
+    def update(self, table, values, where):
+        set_clause = ", ".join([f"{key} = ?" for key in values.keys()])
+        where_clause = " and ".join([f"{key} = ?" for key in where.keys()])
+        statements = f"update {table} set {set_clause} where {where_clause} returning *;"
+        bindings = tuple(list(values.values()) + list(where.values()))
+        return self._conn.execute(statements, bindings)
 
-def init_db(replace=False):
-    """Initialize the database with tables"""
-    with _conn() as conn:
+    def delete(self, table, where):
+        where_clause = " and ".join([f"{key} = ?" for key in where.keys()])
+        statements = f"delete from {table} where {where_clause} returning *;"
+        bindings = tuple(where.values())
+        return self._conn.execute(statements, bindings)
+
+def init_db(db_path=DB_PATH, recreate=False):
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = apsw.Connection(db_path)
+    with conn:
         # Tiers table
-        if replace:
+        if recreate:
             conn.execute("DROP TABLE IF EXISTS transcripts")
             conn.execute("DROP TABLE IF EXISTS audio")
             conn.execute("DROP TABLE IF EXISTS preferences")
-            conn.execute("DROP TABLE IF EXISTS podcasts")
+            conn.execute("DROP TABLE IF EXISTS conversations")
             conn.execute("DROP TABLE IF EXISTS transactions")
             conn.execute("DROP TABLE IF EXISTS subscriptions")
-            conn.execute("DROP TABLE IF EXISTS auths")
-            conn.execute("DROP TABLE IF EXISTS sessions")
+            conn.execute("DROP TABLE IF EXISTS auth_accounts")
+            conn.execute("DROP TABLE IF EXISTS auth_sessions")
             conn.execute("DROP TABLE IF EXISTS users")
             conn.execute("DROP TABLE IF EXISTS tiers")
 
@@ -97,7 +117,7 @@ def init_db(replace=False):
             CREATE TABLE IF NOT EXISTS auth_sessions (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
-                token TEXT NOT NULL,
+                refresh_token TEXT NOT NULL,
                 expires_at TIMESTAMP NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -119,14 +139,12 @@ def init_db(replace=False):
             );
         """))
 
-        # Podcasts table
+        # Conversations table
         conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS podcasts (
+            CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                topic TEXT NOT NULL,
-                title TEXT NOT NULL,
-                description TEXT,
+                title TEXT,
                 status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
                 credits_used INTEGER DEFAULT 1 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -134,28 +152,31 @@ def init_db(replace=False):
             );
         """))
 
+        # Messages table
+        conn.execute(dedent("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                role TEXT CHECK (role IN ('system', 'user', 'assistant')),
+                content TEXT,
+                type TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+            );
+        """))
+
         # Preferences table
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS preferences (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                podcast_id INTEGER NOT NULL UNIQUE,
+                conversation_id INTEGER NOT NULL UNIQUE,
                 voice_id TEXT DEFAULT 'default',
+                topic TEXT,
+                genre TEXT,
                 level TEXT CHECK (level IN ('beginner', 'intermediate', 'advanced')),
-                length TEXT CHECK (length IN ('5', '10', '15')),
+                length INT CHECK (length IN (5, 10, 15)),
                 custom_instruction TEXT,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
-            );
-        """))
-
-        # Audio table
-        conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS audio (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                podcast_id INTEGER NOT NULL UNIQUE,
-                path TEXT NOT NULL,
-                duration INTEGER,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
             );
         """))
 
@@ -163,10 +184,22 @@ def init_db(replace=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS transcripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                podcast_id INTEGER NOT NULL UNIQUE,
+                conversation_id INTEGER NOT NULL UNIQUE,
                 content TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+            );
+        """))
+
+        # Audio table
+        conn.execute(dedent("""
+            CREATE TABLE IF NOT EXISTS audio (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL UNIQUE,
+                path TEXT NOT NULL,
+                duration INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
             );
         """))
 
@@ -181,3 +214,11 @@ def init_db(replace=False):
             "INSERT OR IGNORE INTO tiers (name, product_id, monthly_credits, price, duration, is_consumable) VALUES (?, ?, ?, ?, ?, ?)",
             tiers
         )
+
+def get_db() -> Generator[DB, None, None]:
+    db = None
+    try:
+        db = DB(path=DB_PATH, dc=True)
+        yield db
+    finally:
+        if db: db.close()

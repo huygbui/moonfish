@@ -8,6 +8,7 @@ dependencies = [
     "apsw>=3.49.1.0",
     "cryptography>=44.0.2",
     "fastapi[standard]>=0.115.11",
+    "google-genai>=1.8.0",
     "pyjwt>=2.10.1",
 ]
 

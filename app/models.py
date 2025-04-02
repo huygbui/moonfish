@@ -14,9 +14,10 @@ class AppleAuthRequest(BaseModel):
     state: Optional[str] = None
     user: Optional[UserSignup] = None
 
-class AuthTokenResponse(BaseModel):
-    id_token: str
-    refresh_token: Optional[str] = None
+class TokenRequest(BaseModel):
+    refresh_token: str
 
-class SessionTokenResponse(BaseModel):
-    token: str
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = 'bearer'
