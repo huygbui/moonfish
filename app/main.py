@@ -5,7 +5,6 @@ from typing_extensions import Annotated
 from fastapi import FastAPI, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from contextlib import asynccontextmanager
 
@@ -21,7 +20,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=True)
+    init_db(recreate=False)
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
@@ -68,8 +67,8 @@ async def generate(prompt:List[types.Content]):
     )
     return response.text
 
-@app.post("/auth/apple", response_model=TokenResponse)
-def handle_apple_auth(
+@app.post("/auth/apple/callback", response_model=TokenResponse)
+def handle_apple_callback(
     req: AppleAuthRequest,
     auth: Annotated[Auth, Depends(get_auth)]
 ):
@@ -90,7 +89,7 @@ def handle_apple_auth(
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 @app.post("/auth/token", response_model=TokenResponse)
-def handle_refresh_token(
+def handle_token(
     req: TokenRequest,
     auth: Annotated[Auth, Depends(get_auth)]
 ):

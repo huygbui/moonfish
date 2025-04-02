@@ -1,15 +1,15 @@
-from typing_extensions import Annotated
-import jwt
 import os
+import secrets
+import jwt
 
-from typing import Optional, Dict, Generator
-from fastapi import HTTPException, status, Depends
+from typing import Optional, Annotated
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, UTC
 
+from fastapi import HTTPException, Depends
+
 from app.database import DB, get_db
 from app.models import UserSignup, TokenResponse
-import secrets
 
 load_dotenv(".env")
 
