@@ -67,6 +67,7 @@ def init_db(db_path=DB_PATH, recreate=False):
             conn.execute("DROP TABLE IF EXISTS audio")
             conn.execute("DROP TABLE IF EXISTS preferences")
             conn.execute("DROP TABLE IF EXISTS conversations")
+            conn.execute("DROP TABLE IF EXISTS messages")
             conn.execute("DROP TABLE IF EXISTS transactions")
             conn.execute("DROP TABLE IF EXISTS subscriptions")
             conn.execute("DROP TABLE IF EXISTS auth_accounts")
@@ -157,7 +158,7 @@ def init_db(db_path=DB_PATH, recreate=False):
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 conversation_id INTEGER NOT NULL,
-                role TEXT CHECK (role IN ('system', 'user', 'assistant')),
+                role TEXT CHECK (role IN ('system', 'user', 'model')),
                 content TEXT,
                 type TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,

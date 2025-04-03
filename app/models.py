@@ -21,3 +21,15 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = 'bearer'
+
+class ChatRequest(BaseModel):
+    conversation_id: Optional[int] = None
+    message:str
+
+class ChatResponse(BaseModel):
+    conversation_id: Optional[int] = None
+    message: str
+
+class ChatMessage(BaseModel):
+    role:str
+    content:str
