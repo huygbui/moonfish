@@ -66,7 +66,7 @@ def init_db(db_path=DB_PATH, recreate=False):
             conn.execute("DROP TABLE IF EXISTS transcripts")
             conn.execute("DROP TABLE IF EXISTS audio")
             conn.execute("DROP TABLE IF EXISTS preferences")
-            conn.execute("DROP TABLE IF EXISTS conversations")
+            conn.execute("DROP TABLE IF EXISTS chats")
             conn.execute("DROP TABLE IF EXISTS messages")
             conn.execute("DROP TABLE IF EXISTS transactions")
             conn.execute("DROP TABLE IF EXISTS subscriptions")
@@ -140,9 +140,9 @@ def init_db(db_path=DB_PATH, recreate=False):
             );
         """))
 
-        # Conversations table
+        # Chats table
         conn.execute(dedent("""
-            CREATE TABLE IF NOT EXISTS conversations (
+            CREATE TABLE IF NOT EXISTS chats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 title TEXT,
@@ -157,12 +157,12 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id INTEGER NOT NULL,
+                chat_id INTEGER NOT NULL,
                 role TEXT CHECK (role IN ('system', 'user', 'model')),
                 content TEXT,
                 type TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """))
 
@@ -170,14 +170,14 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS preferences (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id INTEGER NOT NULL UNIQUE,
+                chat_id INTEGER NOT NULL UNIQUE,
                 voice_id TEXT DEFAULT 'default',
                 topic TEXT,
                 genre TEXT,
                 level TEXT CHECK (level IN ('beginner', 'intermediate', 'advanced')),
                 length INT CHECK (length IN (5, 10, 15)),
                 custom_instruction TEXT,
-                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """))
 
@@ -185,10 +185,10 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS transcripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id INTEGER NOT NULL UNIQUE,
+                chat_id INTEGER NOT NULL UNIQUE,
                 content TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """))
 
@@ -196,11 +196,11 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(dedent("""
             CREATE TABLE IF NOT EXISTS audio (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id INTEGER NOT NULL UNIQUE,
+                chat_id INTEGER NOT NULL UNIQUE,
                 path TEXT NOT NULL,
                 duration INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE
+                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """))
 

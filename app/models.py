@@ -23,12 +23,11 @@ class TokenResponse(BaseModel):
     token_type: str = 'bearer'
 
 class ChatRequest(BaseModel):
-    conversation_id: Optional[int] = None
-    message:str
+    content:str
 
 class ChatResponse(BaseModel):
-    conversation_id: Optional[int] = None
-    message: str
+    chat_id: Optional[int] = None
+    content: str
 
 class ChatMessage(BaseModel):
     role:str

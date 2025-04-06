@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def find_current_user(
+def get_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
     db: Annotated[Generator[DB, None, None], Depends(get_db)],
     auth: Annotated[Auth, Depends(get_auth)]
@@ -48,100 +48,134 @@ def find_current_user(
         columns = ['*'],
         where = {'id': user_id}
     ).fetchone()
-    if user: return user
-    return HTTPException(status_code=404, detail="User not found")
+    if not user: raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+def get_chat(
+    chat_id:int,
+    user:Annotated[Dict[str,str], Depends(get_user)],
+    db:Annotated[DB, Depends(get_db)],
+):
+    chat = db.select(
+        table="chats",
+        columns=["id", "user_id"],
+        where={
+            "id": chat_id,
+            "user_id": user.id
+        }
+    ).fetchone()
+    if not chat: raise HTTPException(status_code=404, detail="Conversation not found")
+    return chat
+
+async def generate(
+    chat_id: int,
+    content: str,
+    client: genai.Client,
+    db: DB,
+) -> ChatResponse:
+    db.insert(
+        table="messages",
+        values={
+            "chat_id": chat_id,
+            "content": content,
+            "role": "user",
+            "type": "text",
+        }
+    )
+
+    history = db.select(
+        table="messages",
+        columns=["id", "content", "role", "type", "created_at"],
+        where={"chat_id": chat_id}
+    ).fetchall()
+    if not history: raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
+
+    def _gemini_content(role:str, content:str) -> types.Content:
+        assert role in ("user", "model"), f"Invalid role: {role}"
+        return types.Content(role=role, parts=[types.Part.from_text(text=content)])
+
+    contents = [_gemini_content(msg.role, msg.content) for msg in history]
+
+    response = await client.aio.models.generate_content(
+        model='gemini-2.0-flash-001',
+        contents=contents
+    )
+
+    db.insert(
+        table="messages",
+        values={
+            "chat_id": chat_id,
+            "content": response.text,
+            "role": "model",
+            "type": "text",
+        }
+    )
+
+    return ChatResponse(chat_id=chat_id, content=response.text)
+
 
 @app.get("/")
 def index():
     return {"message": "Hello, World!"}
 
 @app.get("/me")
-async def me(user: Annotated[Dict[str,str], Depends(find_current_user)]):
+async def me(user: Annotated[Dict[str,str], Depends(get_user)]):
     return user
 
-@app.get("/generate")
-async def generate(prompt:List[types.Content]):
-    client : genai.Client = app.state.genai_client
-    response = await client.aio.models.generate_content(
-        model='gemini-2.0-flash-001', contents=prompt
-    )
-    return response.text
-
-@app.post("/chat")
-async def handle_chat(
-    req:ChatRequest,
-    user: Annotated[Dict[str,str], Depends(find_current_user)],
+@app.get("/chat")
+async def get_chats(
+    user: Annotated[Dict[str,str], Depends(get_user)],
     db:Annotated[DB, Depends(get_db)]
 ):
-    if req.conversation_id is None:
-        convo = db.insert(
-            table="conversations",
-            values={
-                "user_id": user.id,
-                "title": req.message[:30] + "..." if len(req.message) > 30 else req.message,
-            }
-        ).fetchone()
+    chats = db.select(
+        table="chats",
+        columns=["id", "title", "status", "credits_used"],
+        where={"user_id": user.id}
+    ).fetchall()
+    return chats
 
-        messages = db.insert(
-            table="messages",
-            values={
-                "conversation_id": convo.id,
-                "content": req.message,
-                "role": "user",
-                "type": "text",
-            }
-        ).fetchone()
-    else:
-        convo = db.select(
-            table="conversations",
-            columns=["id"],
-            where={
-                "id": req.conversation_id,
-                "user_id": user.id
-            }
-        ).fetchone()
-        if not convo: raise HTTPException(status_code=404, detail="Conversation not found")
+@app.post("/chat", response_model=ChatResponse)
+async def handle_new_chat(
+    req:ChatRequest,
+    user: Annotated[Dict[str,str], Depends(get_user)],
+    db:Annotated[DB, Depends(get_db)]
+):
+    chat = db.insert(
+        table="chats",
+        values={ "user_id": user.id, }
+    ).fetchone()
+    if not chat: raise HTTPException(status_code=400, detail="Failed to create chat")
 
-    messages = db.select(
+    return await generate(
+        chat_id=chat.id,
+        content=req.content,
+        client=app.state.genai_client,
+        db=db
+    )
+
+@app.get("/chat/{chat_id}")
+async def get_messages(
+    chat:Annotated[Dict[str,str], Depends(get_chat)],
+    db:Annotated[DB, Depends(get_db)]
+):
+    return db.select(
         table="messages",
-        columns=["id", "content", "role", "type", "created_at"],
-        where={"conversation_id": convo.id}
+        columns=["id", "content", "role", "created_at"],
+        where={"chat_id": chat.id}
     ).fetchall()
 
-    def _gemini_message(role:str, content:str) -> types.Content:
-        if role=="user":
-            return types.UserContent(parts=[types.Part.from_text(text=content)])
-        elif role=="model":
-            return types.ModelContent(parts=[types.Part.from_text(text=content)])
-        else:
-            raise ValueError(f"Invalid role: {role}")
-
-    gemini_messages = [_gemini_message(message.role, message.content) for message in messages]
-    gemini_messages.append(_gemini_message("user", req.message))
-
-    client : genai.Client = app.state.genai_client
-    response = await client.aio.models.generate_content(
-        model='gemini-2.0-flash-001', contents=gemini_messages
+@app.post("/chat/{chat_id}", response_model=ChatResponse)
+async def handle_chat(
+    req:ChatRequest,
+    chat:Annotated[Dict[str,str], Depends(get_chat)],
+    db:Annotated[DB, Depends(get_db)]
+):
+    return await generate(
+        chat_id=chat.id,
+        content=req.content,
+        client=app.state.genai_client,
+        db=db
     )
-    db.insert(
-        table="messages",
-        values={
-            "conversation_id": convo.id,
-            "content": req.message,
-            "role": "user",
-            "type": "text",
-        }
-    )
-    db.insert(
-        table="messages",
-        values={
-            "conversation_id": convo.id,
-            "content": response.text,
-            "role": "model",
-            "type": "text",
-        }
-    )
-    return ChatResponse(conversation_id=req.conversation_id, message=response.text)
 
 @app.post("/auth/apple/callback", response_model=TokenResponse)
 def handle_apple_callback(
