@@ -48,10 +48,16 @@ def get_user(
     db: Annotated[Generator[DB, None, None], Depends(get_db)],
     auth: Annotated[Auth, Depends(get_auth)],
 ) -> Optional[Dict[str, str]]:
-    token = credentials.credentials
-    payload = auth.verify_access_token(token)
-    user_id = payload.get("sub")
-    user = db.select(table="users", columns=["*"], where={"id": user_id}).fetchone()
+    try:
+        token = credentials.credentials
+        payload = auth.verify_access_token(token)
+        user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = db.select(
+        table="users", columns=["*"], where={"id": user_id}
+    ).fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -94,19 +100,22 @@ async def generate(
         where={"chat_id": chat_id},
     ).fetchall()
     if not history:
-        raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
+        raise HTTPException(
+            status_code=404, detail="Failed to retrieve conversation"
+        )
 
     def _gemini_content(role: str, content: str) -> types.Content:
         assert role in ("user", "model"), f"Invalid role: {role}"
-        return types.Content(role=role, parts=[types.Part.from_text(text=content)])
+        return types.Content(
+            role=role, parts=[types.Part.from_text(text=content)]
+        )
 
     contents = [_gemini_content(msg.role, msg.content) for msg in history]
 
     response = await client.aio.models.generate_content(
         model="gemini-2.0-flash-001", contents=contents
     )
-
-    db.insert(
+    result = db.insert(
         table="messages",
         values={
             "chat_id": chat_id,
@@ -114,9 +123,13 @@ async def generate(
             "role": "model",
             "type": "text",
         },
-    )
+    ).fetchone()
 
-    return ChatResponse(chat_id=chat_id, content=response.text)
+    return ChatResponse(
+        chat_id=result.chat_id,
+        content=result.content,
+        created_at=result.created_at,
+    )
 
 
 @app.get("/")
@@ -158,7 +171,10 @@ async def handle_new_chat(
         raise HTTPException(status_code=400, detail="Failed to create chat")
 
     return await generate(
-        chat_id=chat.id, content=req.content, client=app.state.genai_client, db=db
+        chat_id=chat.id,
+        content=req.content,
+        client=app.state.genai_client,
+        db=db,
     )
 
 
@@ -181,7 +197,10 @@ async def handle_chat(
     db: Annotated[DB, Depends(get_db)],
 ):
     return await generate(
-        chat_id=chat.id, content=req.content, client=app.state.genai_client, db=db
+        chat_id=chat.id,
+        content=req.content,
+        client=app.state.genai_client,
+        db=db,
     )
 
 
@@ -200,7 +219,9 @@ def handle_apple_callback(
     # name = {}
     apple_sub = "mock_sub"
     apple_refresh_token = "mock_refresh"
-    user_id = auth.find_or_add_user("apple", apple_sub, apple_refresh_token, req.user)
+    user_id = auth.find_or_add_user(
+        "apple", apple_sub, apple_refresh_token, req.user
+    )
     access_token = auth.create_access_token(user_id)
     refresh_token = auth.create_and_add_refresh_token(user_id)
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

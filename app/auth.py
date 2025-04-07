@@ -1,26 +1,28 @@
 import os
 import secrets
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Optional
+
 import jwt
-
-from typing import Optional, Annotated
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, UTC
-
-from fastapi import HTTPException, Depends
+from fastapi import Depends, HTTPException
 
 from app.database import DB, get_db
-from app.models import UserSignup, TokenResponse
+from app.models import TokenResponse, UserSignup
 
 load_dotenv(".env")
 
-async def exchange_for_tokens(code:str) -> TokenResponse:
+
+async def exchange_for_tokens(code: str) -> TokenResponse:
     pass
 
-async def verify_id_token(id_token:str) -> dict:
+
+async def verify_id_token(id_token: str) -> dict:
     pass
+
 
 class Auth:
-    def __init__(self, db:DB):
+    def __init__(self, db: DB):
         self.db = db
         self.jwt_secret = os.getenv("JWT_SECRET")
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM")
@@ -36,41 +38,50 @@ class Auth:
         token = secrets.token_urlsafe(64)
         self.db.insert(
             table="auth_sessions",
-            values={"user_id":user_id, "refresh_token":token, "expires_at":expires.isoformat()}
+            values={
+                "user_id": user_id,
+                "refresh_token": token,
+                "expires_at": expires.strftime("%Y-%m-%d %H:%M:%S"),
+            },
         ).fetchone()
         return token
 
-    def verify_access_token(self, token:str) -> dict:
+    def verify_access_token(self, token: str) -> dict:
         return jwt.decode(token, self.jwt_secret, [self.jwt_algorithm])
 
-    def verify_refresh_token(self, token:str) -> int:
+    def verify_refresh_token(self, token: str) -> int:
         token = self.db.select(
             table="auth_sessions",
             columns=["user_id", "refresh_token", "expires_at"],
-            where={"refresh_token":token},
-            limit=1
+            where={"refresh_token": token},
+            limit=1,
         ).fetchone()
-        if not token: raise HTTPException(status_code=401, detail="Invalid refresh token")
+        if not token:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-        expires_at = datetime.fromisoformat(token.expires_at)
+        expires_at = datetime.strptime(token.expires_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
         if expires_at < datetime.now(UTC):
-            self.db.delete(table="auth_sessions", where={"id":token.id})
-            raise HTTPException( status_code=401, detail="Refresh token has expired, please login again" )
+            self.db.delete(table="auth_sessions", where={"id": token.id})
+            raise HTTPException(
+                status_code=401,
+                detail="Refresh token has expired, please login again",
+            )
         return token.user_id
 
     def find_or_add_user(
         self,
-        provider:str,
-        provider_user_id:str,
-        refresh_token:Optional[str]=None,
-        user_data:Optional[UserSignup]=None
+        provider: str,
+        provider_user_id: str,
+        refresh_token: Optional[str] = None,
+        user_data: Optional[UserSignup] = None,
     ) -> int:
         auth_account = self.db.select(
             table="auth_accounts",
             columns=["user_id"],
-            where={"provider":provider, "provider_user_id":provider_user_id},
-            limit=1
+            where={"provider": provider, "provider_user_id": provider_user_id},
+            limit=1,
         ).fetchone()
+        # fmt: off
         if not auth_account:
             user = self.db.insert(
                 table="users",
@@ -78,8 +89,9 @@ class Auth:
                     "email": user_data.email if user_data else "",
                     "first_name": user_data.name.first_name if user_data and user_data.name else "",
                     "last_name": user_data.name.last_name if user_data and user_data.name else "",
-                }
+                },
             ).fetchone()
+            # fmt: off
             auth_account = self.db.insert(
                 table="auth_accounts",
                 values={
@@ -87,10 +99,10 @@ class Auth:
                     "provider": provider,
                     "provider_user_id": provider_user_id,
                     "refresh_token": refresh_token,
-                }
+                },
             ).fetchone()
-
         return auth_account.user_id
 
-def get_auth(db:Annotated[DB, Depends(get_db)]) -> Auth:
+
+def get_auth(db: Annotated[DB, Depends(get_db)]) -> Auth:
     return Auth(db)
