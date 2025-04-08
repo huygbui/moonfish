@@ -1,20 +1,22 @@
 import os
+from textwrap import dedent
+from typing import Dict, Generator, Optional
 
 import apsw
-import apsw.ext
 import apsw.bestpractice
+import apsw.ext
 
-from typing import Optional, Dict, Generator
-from textwrap import dedent
 from app.config import DB_PATH
 
 apsw.bestpractice.apply(apsw.bestpractice.recommended)
 apsw.ext.log_sqlite()
 
+
 class DB:
     def __init__(self, path, dc):
         self._conn = apsw.Connection(path)
-        if dc: self._conn.row_trace = apsw.ext.DataClassRowFactory()
+        if dc:
+            self._conn.row_trace = apsw.ext.DataClassRowFactory()
 
     @property
     def conn(self):
@@ -24,7 +26,7 @@ class DB:
         self._conn.close()
         self._conn = None
 
-    def select(self, table, columns, where:Optional[Dict]=None, limit:Optional[int]=None):
+    def select(self, table, columns, where: Optional[Dict] = None, limit: Optional[int] = None):
         select_clause = ", ".join(columns)
         bindings = []
         statements = f"select {select_clause} from {table}"
@@ -57,6 +59,7 @@ class DB:
         bindings = tuple(where.values())
         return self._conn.execute(statements, bindings)
 
+
 def init_db(db_path=DB_PATH, recreate=False):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = apsw.Connection(db_path)
@@ -75,7 +78,8 @@ def init_db(db_path=DB_PATH, recreate=False):
             conn.execute("DROP TABLE IF EXISTS users")
             conn.execute("DROP TABLE IF EXISTS tiers")
 
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS tiers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
@@ -86,10 +90,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 is_consumable BOOLEAN DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
-        """))
+        """)
+        )
 
         # Users table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 email TEXT UNIQUE,
@@ -98,10 +104,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 balance INTEGER DEFAULT 3 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
-        """))
+        """)
+        )
 
         # Auths table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS auth_accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -111,10 +119,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
-        # Sessions table
-        conn.execute(dedent("""
+        # Auth sessions table
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS auth_sessions (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
@@ -123,10 +133,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Transactions table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -138,10 +150,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Chats table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS chats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -151,10 +165,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Messages table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL,
@@ -164,10 +180,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Preferences table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS preferences (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL UNIQUE,
@@ -179,10 +197,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 custom_instruction TEXT,
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Transcripts table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS transcripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL UNIQUE,
@@ -190,10 +210,12 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Audio table
-        conn.execute(dedent("""
+        conn.execute(
+            dedent("""
             CREATE TABLE IF NOT EXISTS audio (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL UNIQUE,
@@ -202,7 +224,8 @@ def init_db(db_path=DB_PATH, recreate=False):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
-        """))
+        """)
+        )
 
         # Insert default tiers
         tiers = [
@@ -213,8 +236,9 @@ def init_db(db_path=DB_PATH, recreate=False):
 
         conn.executemany(
             "INSERT OR IGNORE INTO tiers (name, product_id, monthly_credits, price, duration, is_consumable) VALUES (?, ?, ?, ?, ?, ?)",
-            tiers
+            tiers,
         )
+
 
 def get_db() -> Generator[DB, None, None]:
     db = None
@@ -222,4 +246,5 @@ def get_db() -> Generator[DB, None, None]:
         db = DB(path=DB_PATH, dc=True)
         yield db
     finally:
-        if db: db.close()
+        if db:
+            db.close()
