@@ -55,9 +55,7 @@ def get_user(
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    user = db.select(
-        table="users", columns=["*"], where={"id": user_id}
-    ).fetchone()
+    user = db.select(table="users", columns=["*"], where={"id": user_id}).fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -96,25 +94,19 @@ async def generate(
 
     history = db.select(
         table="messages",
-        columns=["id", "content", "role", "type", "created_at"],
+        columns=["id", "content", "role", "type"],
         where={"chat_id": chat_id},
     ).fetchall()
     if not history:
-        raise HTTPException(
-            status_code=404, detail="Failed to retrieve conversation"
-        )
+        raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
 
     def _gemini_content(role: str, content: str) -> types.Content:
         assert role in ("user", "model"), f"Invalid role: {role}"
-        return types.Content(
-            role=role, parts=[types.Part.from_text(text=content)]
-        )
+        return types.Content(role=role, parts=[types.Part.from_text(text=content)])
 
     contents = [_gemini_content(msg.role, msg.content) for msg in history]
 
-    response = await client.aio.models.generate_content(
-        model="gemini-2.0-flash-001", contents=contents
-    )
+    response = await client.aio.models.generate_content(model="gemini-2.0-flash", contents=contents)
     result = db.insert(
         table="messages",
         values={
@@ -128,7 +120,6 @@ async def generate(
     return ChatResponse(
         chat_id=result.chat_id,
         content=result.content,
-        created_at=result.created_at,
     )
 
 
@@ -185,7 +176,7 @@ async def get_messages(
 ):
     return db.select(
         table="messages",
-        columns=["id", "content", "role", "created_at"],
+        columns=["id", "content", "role"],
         where={"chat_id": chat.id},
     ).fetchall()
 
@@ -205,9 +196,7 @@ async def handle_chat(
 
 
 @app.post("/auth/apple/callback", response_model=TokenResponse)
-def handle_apple_callback(
-    req: AppleAuthRequest, auth: Annotated[Auth, Depends(get_auth)]
-):
+def handle_apple_callback(req: AppleAuthRequest, auth: Annotated[Auth, Depends(get_auth)]):
     # TODO: Exchange code for tokens
     # tokens = await exchange_for_tokens(req.code)
     # id_token = tokens["id_token"]
@@ -219,9 +208,7 @@ def handle_apple_callback(
     # name = {}
     apple_sub = "mock_sub"
     apple_refresh_token = "mock_refresh"
-    user_id = auth.find_or_add_user(
-        "apple", apple_sub, apple_refresh_token, req.user
-    )
+    user_id = auth.find_or_add_user("apple", apple_sub, apple_refresh_token, req.user)
     access_token = auth.create_access_token(user_id)
     refresh_token = auth.create_and_add_refresh_token(user_id)
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

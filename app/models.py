@@ -36,7 +36,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     chat_id: Optional[int] = None
     content: str
-    created_at: str
 
 
 class ChatMessage(BaseModel):
