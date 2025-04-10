@@ -26,7 +26,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=True)
+    init_db(recreate=False)
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
@@ -133,7 +133,7 @@ async def me(user: Annotated[Dict[str, str], Depends(get_user)]):
     return user
 
 
-@app.get("/chat")
+@app.get("/chat/")
 async def get_chats(
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
@@ -146,7 +146,7 @@ async def get_chats(
     return chats
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat/", response_model=ChatResponse)
 async def handle_new_chat(
     req: ChatRequest,
     user: Annotated[Dict[str, str], Depends(get_user)],
