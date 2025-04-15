@@ -28,7 +28,7 @@ class Auth:
         self.jwt_algorithm = os.getenv("JWT_ALGORITHM")
 
     def create_access_token(self, user_id: int, expires_delta: Optional[timedelta] = None) -> str:
-        expires = datetime.now(UTC) + (expires_delta or timedelta(hours=24))
+        expires = datetime.now(UTC) + (expires_delta or timedelta(days=10))
         payload = {"sub": str(user_id), "exp": expires, "type": "access"}
         token = jwt.encode(payload, self.jwt_secret, self.jwt_algorithm)
         return token

@@ -81,7 +81,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS tiers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 product_id TEXT UNIQUE,
                 monthly_credits INTEGER NOT NULL,
@@ -97,7 +97,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 email TEXT UNIQUE,
                 first_name TEXT,
                 last_name TEXT,
@@ -111,7 +111,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS auth_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 provider TEXT NOT NULL,
                 provider_user_id TEXT NOT NULL,
@@ -140,7 +140,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 type TEXT NOT NULL CHECK (type IN ('subscription', 'purchase', 'usage', 'refund')),
                 amount INTEGER NOT NULL,
@@ -157,7 +157,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS chats (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 title TEXT,
                 status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
@@ -172,7 +172,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 chat_id INTEGER NOT NULL,
                 role TEXT CHECK (role IN ('system', 'user', 'model')),
                 content TEXT,
@@ -187,7 +187,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS preferences (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 chat_id INTEGER NOT NULL UNIQUE,
                 voice_id TEXT DEFAULT 'default',
                 topic TEXT,
@@ -204,7 +204,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS transcripts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 chat_id INTEGER NOT NULL UNIQUE,
                 content TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -217,7 +217,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS audio (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 chat_id INTEGER NOT NULL UNIQUE,
                 path TEXT NOT NULL,
                 duration INTEGER,

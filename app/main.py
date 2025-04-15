@@ -26,7 +26,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=False)
+    init_db(recreate=True)
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
@@ -133,14 +133,14 @@ async def me(user: Annotated[Dict[str, str], Depends(get_user)]):
     return user
 
 
-@app.get("/chat/")
+@app.get("/chat")
 async def get_chats(
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
 ):
     chats = db.select(
         table="chats",
-        columns=["id", "title", "status", "credits_used"],
+        columns=["id", "title", "status", "created_at"],
         where={"user_id": user.id},
     ).fetchall()
     return chats
@@ -170,7 +170,7 @@ async def handle_new_chat(
 
 
 @app.get("/chat/{chat_id}")
-async def get_messages(
+async def handle_get_chat(
     chat: Annotated[Dict[str, str], Depends(get_chat)],
     db: Annotated[DB, Depends(get_db)],
 ):
@@ -179,6 +179,17 @@ async def get_messages(
         columns=["id", "content", "role"],
         where={"chat_id": chat.id},
     ).fetchall()
+
+
+@app.delete("/chat/{chat_id}")
+async def handle_delete_chat(
+    chat: Annotated[Dict[str, str], Depends(get_chat)],
+    db: Annotated[DB, Depends(get_db)],
+):
+    return db.delete(
+        table="chats",
+        where={"id": chat.id},
+    ).fetchone()
 
 
 @app.post("/chat/{chat_id}", response_model=ChatResponse)
