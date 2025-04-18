@@ -172,7 +172,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 chat_id INTEGER NOT NULL,
                 role TEXT CHECK (role IN ('system', 'user', 'model')),
                 content TEXT,
