@@ -34,8 +34,10 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    chat_id: Optional[int] = None
+    id: int
+    role: str
     content: str
+    chat_id: Optional[int] = None
 
 
 class ChatMessage(BaseModel):

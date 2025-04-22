@@ -173,11 +173,11 @@ def init_db(db_path=DB_PATH, recreate=False):
             dedent("""
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                chat_id INTEGER NOT NULL,
                 role TEXT CHECK (role IN ('system', 'user', 'model')),
                 content TEXT,
                 type TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                chat_id INTEGER NOT NULL,
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """)
@@ -247,4 +247,5 @@ def get_db() -> Generator[DB, None, None]:
         yield db
     finally:
         if db:
+            print("closing db connection")
             db.close()
