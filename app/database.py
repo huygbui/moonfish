@@ -1,6 +1,6 @@
 import os
 from textwrap import dedent
-from typing import Dict, Generator, Optional
+from typing import Dict, Optional
 
 import apsw
 import apsw.bestpractice
@@ -13,18 +13,20 @@ apsw.ext.log_sqlite()
 
 
 class DB:
-    def __init__(self, path, dc):
-        self._conn = apsw.Connection(path)
-        if dc:
+    def __init__(self, path=DB_PATH, dc=True):
+        self._path = path
+        self._dc = dc
+
+    def __enter__(self):
+        self._conn = apsw.Connection(self._path)
+        if self._dc:
             self._conn.row_trace = apsw.ext.DataClassRowFactory()
+        return self
 
-    @property
-    def conn(self):
-        return self._conn
-
-    def close(self):
-        self._conn.close()
-        self._conn = None
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._conn:
+            self._conn.close()
+            self._conn = None
 
     def select(self, table, columns, where: Optional[Dict] = None, limit: Optional[int] = None):
         select_clause = ", ".join(columns)
@@ -240,12 +242,6 @@ def init_db(db_path=DB_PATH, recreate=False):
         )
 
 
-def get_db() -> Generator[DB, None, None]:
-    db = None
-    try:
-        db = DB(path=DB_PATH, dc=True)
+def get_db():
+    with DB() as db:
         yield db
-    finally:
-        if db:
-            print("closing db connection")
-            db.close()

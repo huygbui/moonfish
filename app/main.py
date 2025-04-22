@@ -1,4 +1,3 @@
-import asyncio
 import os
 from contextlib import aclosing, asynccontextmanager
 from typing import Dict, Generator, Optional
@@ -78,6 +77,11 @@ def get_chat(
     return chat
 
 
+def format_gemini_message(role: str, content: str) -> types.Content:
+    assert role in ("user", "model"), f"Invalid role: {role}"
+    return types.Content(role=role, parts=[types.Part.from_text(text=content)])
+
+
 async def generate(
     content: str,
     chat_id: int,
@@ -102,12 +106,7 @@ async def generate(
     if not history:
         raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
 
-    def _gemini_content(role: str, content: str) -> types.Content:
-        assert role in ("user", "model"), f"Invalid role: {role}"
-        return types.Content(role=role, parts=[types.Part.from_text(text=content)])
-
-    contents = [_gemini_content(msg.role, msg.content) for msg in history]
-
+    contents = [format_gemini_message(msg.role, msg.content) for msg in history]
     response = await client.aio.models.generate_content(model="gemini-2.0-flash", contents=contents)
     result = db.insert(
         table="messages",
@@ -132,9 +131,7 @@ async def generate_stream(
     chat_id: int,
     client: genai.Client,
 ):
-    try:
-        gen = get_db()
-        db = next(gen)
+    with DB() as db:
         db.insert(
             table="messages",
             values={
@@ -144,63 +141,32 @@ async def generate_stream(
                 "chat_id": chat_id,
             },
         )
+        history = db.select(
+            table="messages",
+            columns=["id", "content", "role", "type"],
+            where={"chat_id": chat_id},
+        ).fetchall()
+        if not history:
+            raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
 
         result = ""
-        try:
-            generator = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=content)
-            async with aclosing(generator) as stream:
-                async for chunk in stream:
-                    if chunk.text:
-                        yield chunk.text
-                        result += chunk.text
+        contents = [format_gemini_message(msg.role, msg.content) for msg in history]
+        generator = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=contents)
+        async with aclosing(generator) as stream:
+            async for chunk in stream:
+                if chunk.text:
+                    yield chunk.text
+                    result += chunk.text
 
-        except asyncio.CancelledError as e:
-            print(f"CancelledError: {e}")
-    finally:
-        try:
-            if gen:
-                next(gen)
-        except StopIteration:
-            pass
-
-    # history = db.select(
-    #     table="messages",
-    #     columns=["id", "content", "role", "type"],
-    #     where={"chat_id": chat_id},
-    # ).fetchall()
-    # if not history:
-    #     raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
-
-    # def _gemini_content(role: str, content: str) -> types.Content:
-    #     assert role in ("user", "model"), f"Invalid role: {role}"
-    #     return types.Content(role=role, parts=[types.Part.from_text(text=content)])
-
-    # contents = [_gemini_content(msg.role, msg.content) for msg in history]
-
-    # response = ""
-
-    # stream = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=contents)
-    # async for chunk in stream:
-    #     yield chunk.text
-    #     response += chunk.text
-
-    # result = db.insert(
-    #     table="messages",
-    #     values={
-    #         "content": response.text,
-    #         "role": "model",
-    #         "type": "text",
-    #         "chat_id": chat_id,
-    #     },
-    # ).fetchone()
-
-    # print(f"Full response: {result}")
-    # return ChatResponse(
-    #     id=result.id,
-    #     role=result.role,
-    #     content=result.content,
-    #     chat_id=chat_id,
-    # )
+        db.insert(
+            table="messages",
+            values={
+                "content": result,
+                "role": "model",
+                "type": "text",
+                "chat_id": chat_id,
+            },
+        )
 
 
 @app.get("/")
@@ -209,12 +175,12 @@ def index():
 
 
 @app.get("/me")
-async def me(user: Annotated[Dict[str, str], Depends(get_user)]):
+def me(user: Annotated[Dict[str, str], Depends(get_user)]):
     return user
 
 
 @app.get("/chat")
-async def get_chats(
+def get_chats(
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
 ):
@@ -250,7 +216,7 @@ async def handle_new_chat(
 
 
 @app.post("/chat/stream")
-async def handle_new_chat_stream(
+def handle_new_chat_stream(
     req: ChatRequest,
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
@@ -264,7 +230,6 @@ async def handle_new_chat_stream(
     if not chat:
         raise HTTPException(status_code=400, detail="Failed to create chat")
 
-    print(f"generating content for chat {chat.id}")
     return EventSourceResponse(
         generate_stream(
             content=req.content,
@@ -275,7 +240,7 @@ async def handle_new_chat_stream(
 
 
 @app.get("/chat/{chat_id}")
-async def handle_get_chat(
+def handle_get_chat(
     chat: Annotated[Dict[str, str], Depends(get_chat)],
     db: Annotated[DB, Depends(get_db)],
 ):
@@ -288,7 +253,7 @@ async def handle_get_chat(
 
 
 @app.delete("/chat/{chat_id}")
-async def handle_delete_chat(
+def handle_delete_chat(
     chat: Annotated[Dict[str, str], Depends(get_chat)],
     db: Annotated[DB, Depends(get_db)],
 ):
