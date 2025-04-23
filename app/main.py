@@ -20,6 +20,7 @@ from app.models import (
     ChatResponse,
     TokenRequest,
     TokenResponse,
+    User,
 )
 
 load_dotenv()
@@ -48,7 +49,7 @@ def get_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
     db: Annotated[Generator[DB, None, None], Depends(get_db)],
     auth: Annotated[Auth, Depends(get_auth)],
-) -> Optional[Dict[str, str]]:
+) -> Optional[User]:
     try:
         token = credentials.credentials
         payload = auth.verify_access_token(token)
@@ -59,7 +60,15 @@ def get_user(
     user = db.select(table="users", columns=["*"], where={"id": user_id}).fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+
+    return User(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        balance=user.balance,
+        created_at=user.created_at,
+    )
 
 
 def get_chat(

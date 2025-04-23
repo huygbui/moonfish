@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 
 from app.database import DB, get_db
-from app.models import TokenResponse, UserSignup
+from app.models import TokenResponse, UserSignUp
 
 load_dotenv(".env")
 
@@ -73,7 +73,7 @@ class Auth:
         provider: str,
         provider_user_id: str,
         refresh_token: Optional[str] = None,
-        user_data: Optional[UserSignup] = None,
+        user_data: Optional[UserSignUp] = None,
     ) -> int:
         auth_account = self.db.select(
             table="auth_accounts",
@@ -81,8 +81,8 @@ class Auth:
             where={"provider": provider, "provider_user_id": provider_user_id},
             limit=1,
         ).fetchone()
-        # fmt: off
         if not auth_account:
+            # fmt: off
             user = self.db.insert(
                 table="users",
                 values={
