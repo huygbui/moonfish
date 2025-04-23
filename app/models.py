@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -32,18 +32,18 @@ class TokenResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     content: str
-
-
-class ChatResponse(BaseModel):
-    id: int
-    role: str
-    content: str
     chat_id: Optional[int] = None
 
 
-class ChatMessage(BaseModel):
+class Message(BaseModel):
+    id: int
     role: str
     content: str
+
+
+class MessageCollection(BaseModel):
+    chat_id: int
+    messages: Optional[List[Message]] = None
 
 
 class User(BaseModel):
@@ -57,6 +57,11 @@ class User(BaseModel):
 
 class Chat(BaseModel):
     id: int
-    title: str = None
-    status: str = None
+    title: Optional[str] = None
+    status: Optional[str] = None
     created_at: datetime
+    updated_at: datetime
+
+
+class ChatCollection(BaseModel):
+    chats: Optional[List[Chat]] = None

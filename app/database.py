@@ -79,6 +79,8 @@ def init_db(db_path=DB_PATH, recreate=False):
             conn.execute("DROP TABLE IF EXISTS auth_sessions")
             conn.execute("DROP TABLE IF EXISTS users")
             conn.execute("DROP TABLE IF EXISTS tiers")
+            conn.execute("DROP TRIGGER IF EXISTS update_chats_timestamp")
+            conn.execute("DROP TRIGGER IF EXISTS update_chats_timestamp_on_message_insert")
 
         conn.execute(
             dedent("""
@@ -165,6 +167,7 @@ def init_db(db_path=DB_PATH, recreate=False):
                 status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
                 credits_used INTEGER DEFAULT 1 NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """)
@@ -227,6 +230,33 @@ def init_db(db_path=DB_PATH, recreate=False):
                 FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """)
+        )
+
+        # Chat updated trigger
+        conn.execute(
+            dedent("""
+            CREATE TRIGGER IF NOT EXISTS update_chats_timestamp
+            AFTER UPDATE ON chats
+            FOR EACH ROW
+            WHEN NEW.updated_at = OLD.updated_at AND
+                 (OLD.title != NEW.title OR
+                  OLD.status != NEW.status OR
+                  OLD.credits_used != NEW.credits_used OR
+                  OLD.user_id != NEW.user_id)
+            BEGIN
+                UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+            """)
+        )
+
+        conn.execute(
+            dedent("""
+            CREATE TRIGGER IF NOT EXISTS update_chats_timestamp_on_message_insert
+            AFTER INSERT ON messages
+            BEGIN
+                UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.chat_id;
+            END;
+            """)
         )
 
         # Insert default tiers

@@ -1,6 +1,7 @@
 import os
 from contextlib import aclosing, asynccontextmanager
-from typing import Dict, Generator, Optional
+from dataclasses import asdict
+from typing import Dict, Generator
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
@@ -10,14 +11,17 @@ from google import genai
 from google.genai import types
 from sse_starlette.sse import EventSourceResponse
 from starlette.exceptions import HTTPException
-from typing_extensions import Annotated
+from typing_extensions import Annotated, Any
 
 from app.auth import Auth, get_auth
 from app.database import DB, get_db, init_db
 from app.models import (
     AppleAuthRequest,
+    Chat,
+    ChatCollection,
     ChatRequest,
-    ChatResponse,
+    Message,
+    MessageCollection,
     TokenRequest,
     TokenResponse,
     User,
@@ -49,7 +53,7 @@ def get_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
     db: Annotated[Generator[DB, None, None], Depends(get_db)],
     auth: Annotated[Auth, Depends(get_auth)],
-) -> Optional[User]:
+) -> Dict[str, Any]:
     try:
         token = credentials.credentials
         payload = auth.verify_access_token(token)
@@ -61,78 +65,12 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return User(
-        id=user.id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        balance=user.balance,
-        created_at=user.created_at,
-    )
-
-
-def get_chat(
-    chat_id: int,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-):
-    chat = db.select(
-        table="chats",
-        columns=["id", "user_id"],
-        where={"id": chat_id, "user_id": user.id},
-    ).fetchone()
-    if not chat:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return chat
+    return user
 
 
 def format_gemini_message(role: str, content: str) -> types.Content:
     assert role in ("user", "model"), f"Invalid role: {role}"
     return types.Content(role=role, parts=[types.Part.from_text(text=content)])
-
-
-async def generate(
-    content: str,
-    chat_id: int,
-    client: genai.Client,
-    db: DB,
-) -> ChatResponse:
-    db.insert(
-        table="messages",
-        values={
-            "content": content,
-            "role": "user",
-            "type": "text",
-            "chat_id": chat_id,
-        },
-    )
-
-    history = db.select(
-        table="messages",
-        columns=["id", "content", "role", "type"],
-        where={"chat_id": chat_id},
-    ).fetchall()
-    if not history:
-        raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
-
-    contents = [format_gemini_message(msg.role, msg.content) for msg in history]
-    response = await client.aio.models.generate_content(model="gemini-2.0-flash", contents=contents)
-    result = db.insert(
-        table="messages",
-        values={
-            "content": response.text,
-            "role": "model",
-            "type": "text",
-            "chat_id": chat_id,
-        },
-    ).fetchone()
-
-    return ChatResponse(
-        id=result.id,
-        role=result.role,
-        content=result.content,
-        chat_id=chat_id,
-    )
 
 
 async def generate_stream(
@@ -184,60 +122,44 @@ def index():
 
 
 @app.get("/me")
-def me(user: Annotated[Dict[str, str], Depends(get_user)]):
-    return user
+def me(user: Annotated[Dict[str, Any], Depends(get_user)]):
+    return User(**asdict(user))
 
 
 @app.get("/chat")
 def get_chats(
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
-):
+) -> ChatCollection:
     chats = db.select(
         table="chats",
-        columns=["id", "title", "status", "created_at"],
+        columns=["id", "title", "status", "created_at", "updated_at"],
         where={"user_id": user.id},
     ).fetchall()
-    return {"data": chats}
+    return ChatCollection(chats=[Chat(**asdict(c)) for c in chats])
 
 
-@app.post("/chat/", response_model=ChatResponse)
-async def handle_new_chat(
+@app.post("/chat/")
+def handle_chat(
     req: ChatRequest,
     user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
-):
-    chat = db.insert(
-        table="chats",
-        values={
-            "user_id": user.id,
-        },
-    ).fetchone()
+) -> EventSourceResponse:
+    chat = None
+    if req.chat_id:
+        chat = db.select(
+            table="chats",
+            columns=["id", "user_id"],
+            where={"id": req.chat_id, "user_id": user.id},
+        ).fetchone()
+
     if not chat:
-        raise HTTPException(status_code=400, detail="Failed to create chat")
-
-    return await generate(
-        content=req.content,
-        chat_id=chat.id,
-        client=app.state.genai_client,
-        db=db,
-    )
-
-
-@app.post("/chat/stream")
-def handle_new_chat_stream(
-    req: ChatRequest,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-):
-    chat = db.insert(
-        table="chats",
-        values={
-            "user_id": user.id,
-        },
-    ).fetchone()
-    if not chat:
-        raise HTTPException(status_code=400, detail="Failed to create chat")
+        chat = db.insert(
+            table="chats",
+            values={
+                "user_id": user.id,
+            },
+        ).fetchone()
 
     return EventSourceResponse(
         generate_stream(
@@ -249,40 +171,45 @@ def handle_new_chat_stream(
 
 
 @app.get("/chat/{chat_id}")
-def handle_get_chat(
-    chat: Annotated[Dict[str, str], Depends(get_chat)],
+def get_chat_messages(
+    chat_id: int,
+    user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
-):
+) -> MessageCollection:
+    chat = db.select(
+        table="chats",
+        columns=["id", "user_id"],
+        where={"id": chat_id, "user_id": user.id},
+    ).fetchone()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
     messages = db.select(
         table="messages",
         columns=["id", "content", "role"],
         where={"chat_id": chat.id},
     ).fetchall()
-    return {"data": messages}
+
+    return MessageCollection(chat_id=chat.id, messages=[Message(**asdict(m)) for m in messages])
 
 
 @app.delete("/chat/{chat_id}")
 def handle_delete_chat(
-    chat: Annotated[Dict[str, str], Depends(get_chat)],
+    chat_id: int,
+    user: Annotated[Dict[str, str], Depends(get_user)],
     db: Annotated[DB, Depends(get_db)],
 ):
-    return db.delete(
+    chat = db.select(
+        table="chats",
+        columns=["id", "user_id"],
+        where={"id": chat_id, "user_id": user.id},
+    ).fetchone()
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    db.delete(
         table="chats",
         where={"id": chat.id},
-    ).fetchone()
-
-
-@app.post("/chat/{chat_id}", response_model=ChatResponse)
-async def handle_chat(
-    req: ChatRequest,
-    chat: Annotated[Dict[str, str], Depends(get_chat)],
-    db: Annotated[DB, Depends(get_db)],
-):
-    return await generate(
-        content=req.content,
-        chat_id=chat.id,
-        client=app.state.genai_client,
-        db=db,
     )
 
 
