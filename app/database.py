@@ -70,8 +70,6 @@ def init_db(db_path=DB_PATH, recreate=False):
         if recreate:
             conn.execute("DROP TABLE IF EXISTS users")
             conn.execute("DROP TABLE IF EXISTS podcasts")
-            conn.execute("DROP TABLE IF EXISTS transcripts")
-            conn.execute("DROP TABLE IF EXISTS audio")
             conn.execute("DROP TABLE IF EXISTS transactions")
             conn.execute("DROP TABLE IF EXISTS subscriptions")
             conn.execute("DROP TABLE IF EXISTS auth_accounts")
@@ -156,7 +154,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS podcasts (
-                id INTEGER PRIMARY KEY,
+                id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 topic TEXT NOT NULL,
                 length TEXT NOT NULL CHECK (length IN ('short', 'medium', 'long')),
@@ -166,41 +164,18 @@ def init_db(db_path=DB_PATH, recreate=False):
                 instruction TEXT,
 
                 status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'completed', 'cancelled')),
-                title TEXT,
                 step TEXT CHECK (step IN('research', 'compose', 'voice')),
                 progress INTEGER NOT NULL DEFAULT 0,
+
+                title TEXT,
                 summary TEXT,
+                transcript TEXT,
+                audio_url TEXT,
+                duration INTEGER,
 
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-            );
-        """)
-        )
-
-        # Transcripts table
-        conn.execute(
-            dedent("""
-            CREATE TABLE IF NOT EXISTS transcripts (
-                id INTEGER PRIMARY KEY,
-                podcast_id INTEGER NOT NULL UNIQUE,
-                content TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
-            );
-        """)
-        )
-
-        # Audio table
-        conn.execute(
-            dedent("""
-            CREATE TABLE IF NOT EXISTS audio (
-                id INTEGER PRIMARY KEY,
-                podcast_id INTEGER NOT NULL UNIQUE,
-                path TEXT NOT NULL,
-                duration INTEGER,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
             );
         """)
         )
