@@ -68,19 +68,15 @@ def init_db(db_path=DB_PATH, recreate=False):
     with conn:
         # Tiers table
         if recreate:
+            conn.execute("DROP TABLE IF EXISTS users")
+            conn.execute("DROP TABLE IF EXISTS podcasts")
             conn.execute("DROP TABLE IF EXISTS transcripts")
             conn.execute("DROP TABLE IF EXISTS audio")
-            conn.execute("DROP TABLE IF EXISTS preferences")
-            conn.execute("DROP TABLE IF EXISTS chats")
-            conn.execute("DROP TABLE IF EXISTS messages")
             conn.execute("DROP TABLE IF EXISTS transactions")
             conn.execute("DROP TABLE IF EXISTS subscriptions")
             conn.execute("DROP TABLE IF EXISTS auth_accounts")
-            conn.execute("DROP TABLE IF EXISTS auth_sessions")
-            conn.execute("DROP TABLE IF EXISTS users")
             conn.execute("DROP TABLE IF EXISTS tiers")
-            conn.execute("DROP TRIGGER IF EXISTS update_chats_timestamp")
-            conn.execute("DROP TRIGGER IF EXISTS update_chats_timestamp_on_message_insert")
+            conn.execute("DROP TRIGGER IF EXISTS update_podcasts_timestamp")
 
         conn.execute(
             dedent("""
@@ -91,7 +87,6 @@ def init_db(db_path=DB_PATH, recreate=False):
                 monthly_credits INTEGER NOT NULL,
                 price INTEGER NOT NULL,
                 duration TEXT DEFAULT 'monthly',
-                is_consumable BOOLEAN DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """)
@@ -120,7 +115,7 @@ def init_db(db_path=DB_PATH, recreate=False):
                 provider TEXT NOT NULL,
                 provider_user_id TEXT NOT NULL,
                 refresh_token TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """)
@@ -133,8 +128,8 @@ def init_db(db_path=DB_PATH, recreate=False):
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 refresh_token TEXT NOT NULL,
-                expires_at TIMESTAMP NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
             );
         """)
@@ -157,50 +152,28 @@ def init_db(db_path=DB_PATH, recreate=False):
         """)
         )
 
-        # Chats table
+        # Podcasts table
         conn.execute(
             dedent("""
-            CREATE TABLE IF NOT EXISTS chats (
+            CREATE TABLE IF NOT EXISTS podcasts (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
+                topic TEXT NOT NULL,
+                length TEXT NOT NULL CHECK (length IN ('short', 'medium', 'long')),
+                level TEXT NOT NULL CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+                format TEXT NOT NULL CHECK (format IN ('narrative', 'conversational')),
+                voice TEXT NOT NULL CHECK (voice IN ('male', 'female')),
+                instruction TEXT,
+
+                status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'completed', 'cancelled')),
                 title TEXT,
-                status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
-                credits_used INTEGER DEFAULT 1 NOT NULL,
+                step TEXT CHECK (step IN('research', 'compose', 'voice')),
+                progress INTEGER NOT NULL DEFAULT 0,
+                summary TEXT,
+
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-            );
-        """)
-        )
-
-        # Messages table
-        conn.execute(
-            dedent("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role TEXT CHECK (role IN ('system', 'user', 'model')),
-                content TEXT,
-                type TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                chat_id INTEGER NOT NULL,
-                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
-            );
-        """)
-        )
-
-        # Preferences table
-        conn.execute(
-            dedent("""
-            CREATE TABLE IF NOT EXISTS preferences (
-                id INTEGER PRIMARY KEY,
-                chat_id INTEGER NOT NULL UNIQUE,
-                voice_id TEXT DEFAULT 'default',
-                topic TEXT,
-                genre TEXT,
-                level TEXT CHECK (level IN ('beginner', 'intermediate', 'advanced')),
-                length INT CHECK (length IN (5, 10, 15)),
-                custom_instruction TEXT,
-                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
             );
         """)
         )
@@ -210,10 +183,10 @@ def init_db(db_path=DB_PATH, recreate=False):
             dedent("""
             CREATE TABLE IF NOT EXISTS transcripts (
                 id INTEGER PRIMARY KEY,
-                chat_id INTEGER NOT NULL UNIQUE,
+                podcast_id INTEGER NOT NULL UNIQUE,
                 content TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
+                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
             );
         """)
         )
@@ -223,51 +196,36 @@ def init_db(db_path=DB_PATH, recreate=False):
             dedent("""
             CREATE TABLE IF NOT EXISTS audio (
                 id INTEGER PRIMARY KEY,
-                chat_id INTEGER NOT NULL UNIQUE,
+                podcast_id INTEGER NOT NULL UNIQUE,
                 path TEXT NOT NULL,
                 duration INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (chat_id) REFERENCES chats (id) ON DELETE CASCADE
+                FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
             );
         """)
         )
 
-        # Chat updated trigger
+        # Timestamp trigger
         conn.execute(
             dedent("""
-            CREATE TRIGGER IF NOT EXISTS update_chats_timestamp
-            AFTER UPDATE ON chats
+            CREATE TRIGGER IF NOT EXISTS update_podcasts_timestamp
+            AFTER UPDATE ON podcasts
             FOR EACH ROW
-            WHEN NEW.updated_at = OLD.updated_at AND
-                 (OLD.title != NEW.title OR
-                  OLD.status != NEW.status OR
-                  OLD.credits_used != NEW.credits_used OR
-                  OLD.user_id != NEW.user_id)
             BEGIN
-                UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                UPDATE podcasts SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
             END;
-            """)
-        )
-
-        conn.execute(
-            dedent("""
-            CREATE TRIGGER IF NOT EXISTS update_chats_timestamp_on_message_insert
-            AFTER INSERT ON messages
-            BEGIN
-                UPDATE chats SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.chat_id;
-            END;
-            """)
+        """)
         )
 
         # Insert default tiers
         tiers = [
-            ("Free", "com.moonfish.free", 3, 0, "monthly", 0),
-            ("Basic", "com.moonfish.basic", 12, 499, "monthly", 0),
-            ("Premium", "com.moonfish.premium", 30, 999, "monthly", 0),
+            ("Free", "com.moonfish.free", 3, 0, "monthly"),
+            ("Basic", "com.moonfish.basic", 12, 499, "monthly"),
+            ("Premium", "com.moonfish.premium", 30, 999, "monthly"),
         ]
 
         conn.executemany(
-            "INSERT OR IGNORE INTO tiers (name, product_id, monthly_credits, price, duration, is_consumable) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO tiers (name, product_id, monthly_credits, price, duration) VALUES (?, ?, ?, ?, ?)",
             tiers,
         )
 

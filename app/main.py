@@ -34,7 +34,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=False)
+    init_db(recreate=True)
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
