@@ -1,3 +1,4 @@
+import json
 import os
 from contextlib import aclosing, asynccontextmanager
 from dataclasses import asdict
@@ -6,6 +7,7 @@ from typing import Dict, Generator
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google import genai
 from google.genai import types
@@ -97,15 +99,8 @@ async def generate_stream(
             raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
 
         result = ""
-        contents = [format_gemini_message(msg.role, msg.content) for msg in history]
-        generator = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=contents)
-        async with aclosing(generator) as stream:
-            async for chunk in stream:
-                if chunk.text:
-                    yield chunk.text
-                    result += chunk.text
 
-        db.insert(
+        message = db.insert(
             table="messages",
             values={
                 "content": result,
@@ -113,6 +108,36 @@ async def generate_stream(
                 "type": "text",
                 "chat_id": chat_id,
             },
+        ).fetchone()
+        yield {
+            "event": "message_start",
+            "data": json.dumps(
+                {
+                    "id": message.id,
+                    "role": message.role,
+                    "content": "",
+                    "chat_id": chat_id,
+                }
+            ),
+        }
+
+        contents = [format_gemini_message(msg.role, msg.content) for msg in history]
+        generator = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=contents)
+        async with aclosing(generator) as stream:
+            async for chunk in stream:
+                if chunk.text:
+                    yield {
+                        "event": "delta",
+                        "data": json.dumps({"v": chunk.text}),
+                    }
+                    result += chunk.text
+
+        yield {"event": "message_end", "data": json.dumps({"status": "success"})}
+
+        db.update(
+            table="messages",
+            values={"content": result},
+            where={"id": message.id},
         )
 
 
@@ -139,7 +164,7 @@ def get_chats(
     return ChatCollection(chats=[Chat(**asdict(c)) for c in chats])
 
 
-@app.post("/chat/")
+@app.post("/chat")
 def handle_chat(
     req: ChatRequest,
     user: Annotated[Dict[str, str], Depends(get_user)],
@@ -152,8 +177,7 @@ def handle_chat(
             columns=["id", "user_id"],
             where={"id": req.chat_id, "user_id": user.id},
         ).fetchone()
-
-    if not chat:
+    else:
         chat = db.insert(
             table="chats",
             values={
@@ -161,13 +185,20 @@ def handle_chat(
             },
         ).fetchone()
 
-    return EventSourceResponse(
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    response = EventSourceResponse(
         generate_stream(
             content=req.content,
             chat_id=chat.id,
             client=app.state.genai_client,
         ),
+        headers={
+            "Access-Control-Allow-Origin": "*",
+        },
     )
+    return response
 
 
 @app.get("/chat/{chat_id}")
@@ -211,6 +242,14 @@ def handle_delete_chat(
         table="chats",
         where={"id": chat.id},
     )
+
+
+@app.get("/audio")
+async def get_audio():
+    audio_path = "static/sound.wav"
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(audio_path, media_type="audio/wav", filename="sound.mp3")
 
 
 @app.post("/auth/apple/callback", response_model=TokenResponse)

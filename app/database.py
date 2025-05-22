@@ -48,7 +48,7 @@ class DB:
         bindings = tuple(values.values())
         return self._conn.execute(statements, bindings)
 
-    def update(self, table, values, where):
+    def update(self, table: str, values: dict, where: dict):
         set_clause = ", ".join([f"{key} = ?" for key in values.keys()])
         where_clause = " and ".join([f"{key} = ?" for key in where.keys()])
         statements = f"update {table} set {set_clause} where {where_clause} returning *;"
