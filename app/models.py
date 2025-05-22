@@ -1,7 +1,8 @@
+import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import UUID4, BaseModel, EmailStr
 
 
 class UserSignUpName(BaseModel):
@@ -40,8 +41,45 @@ class User(BaseModel):
 
 
 class Podcast(BaseModel):
-    id: int
+    id: UUID4
+    user_id: int
+    topic: str
+    length: Literal["short", "medium", "long"]
+    level: Literal["beginner", "intermediate", "advanced"]
+    format: Literal["narrative", "conversational"]
+    voice: Literal["male", "female"]
+    instruction: Optional[str] = None
+
+    status: Literal["pending", "active", "completed", "cancelled"]
     title: Optional[str] = None
-    status: Optional[str] = None
+    step: Literal["research", "compose", "voice"]
+    progress: int = 0
+    summary: Optional[str] = None
+    transcript_id: Optional[str] = None
+    audio_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PodcastRequest(BaseModel):
+    id: UUID4
+    user_id: int
+    topic: str
+    length: Literal["short", "medium", "long"]
+    level: Literal["beginner", "intermediate", "advanced"]
+    format: Literal["narrative", "conversational"]
+    voice: Literal["male", "female"]
+    instruction: Optional[str] = None
+
+
+class PodcastResponse(BaseModel):
+    id: UUID4 = uuid.uuid4()
+    status: Literal["pending", "active", "completed", "cancelled"]
+    title: Optional[str] = None
+    step: Literal["research", "compose", "voice"]
+    progress: int = 0
+    summary: Optional[str] = None
+    transcript: Optional[str] = None
+    audio_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
