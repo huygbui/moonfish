@@ -11,7 +11,6 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google import genai
 from google.genai import types
-from sse_starlette.sse import EventSourceResponse
 from starlette.exceptions import HTTPException
 from typing_extensions import Annotated, Any
 
@@ -19,11 +18,6 @@ from app.auth import Auth, get_auth
 from app.database import DB, get_db, init_db
 from app.models import (
     AppleAuthRequest,
-    Chat,
-    ChatCollection,
-    ChatRequest,
-    Message,
-    MessageCollection,
     TokenRequest,
     TokenResponse,
     User,
@@ -149,99 +143,6 @@ def index():
 @app.get("/me")
 def me(user: Annotated[Dict[str, Any], Depends(get_user)]):
     return User(**asdict(user))
-
-
-@app.get("/chat")
-def get_chats(
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-) -> ChatCollection:
-    chats = db.select(
-        table="chats",
-        columns=["id", "title", "status", "created_at", "updated_at"],
-        where={"user_id": user.id},
-    ).fetchall()
-    return ChatCollection(chats=[Chat(**asdict(c)) for c in chats])
-
-
-@app.post("/chat")
-def handle_chat(
-    req: ChatRequest,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-) -> EventSourceResponse:
-    chat = None
-    if req.chat_id:
-        chat = db.select(
-            table="chats",
-            columns=["id", "user_id"],
-            where={"id": req.chat_id, "user_id": user.id},
-        ).fetchone()
-    else:
-        chat = db.insert(
-            table="chats",
-            values={
-                "user_id": user.id,
-            },
-        ).fetchone()
-
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    response = EventSourceResponse(
-        generate_stream(
-            content=req.content,
-            chat_id=chat.id,
-            client=app.state.genai_client,
-        ),
-        headers={
-            "Access-Control-Allow-Origin": "*",
-        },
-    )
-    return response
-
-
-@app.get("/chat/{chat_id}")
-def get_chat_messages(
-    chat_id: int,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-) -> MessageCollection:
-    chat = db.select(
-        table="chats",
-        columns=["id", "user_id"],
-        where={"id": chat_id, "user_id": user.id},
-    ).fetchone()
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    messages = db.select(
-        table="messages",
-        columns=["id", "content", "role"],
-        where={"chat_id": chat.id},
-    ).fetchall()
-
-    return MessageCollection(chat_id=chat.id, messages=[Message(**asdict(m)) for m in messages])
-
-
-@app.delete("/chat/{chat_id}")
-def handle_delete_chat(
-    chat_id: int,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-):
-    chat = db.select(
-        table="chats",
-        columns=["id", "user_id"],
-        where={"id": chat_id, "user_id": user.id},
-    ).fetchone()
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    db.delete(
-        table="chats",
-        where={"id": chat.id},
-    )
 
 
 @app.get("/audio")
