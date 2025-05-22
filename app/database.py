@@ -154,7 +154,7 @@ def init_db(db_path=DB_PATH, recreate=False):
         conn.execute(
             dedent("""
             CREATE TABLE IF NOT EXISTS podcasts (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 topic TEXT NOT NULL,
                 length TEXT NOT NULL CHECK (length IN ('short', 'medium', 'long')),
@@ -163,7 +163,7 @@ def init_db(db_path=DB_PATH, recreate=False):
                 voice TEXT NOT NULL CHECK (voice IN ('male', 'female')),
                 instruction TEXT,
 
-                status TEXT NOT NULL CHECK (status IN ('pending', 'active', 'completed', 'cancelled')),
+                status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'completed', 'cancelled')),
                 step TEXT CHECK (step IN('research', 'compose', 'voice')),
                 progress INTEGER NOT NULL DEFAULT 0,
 

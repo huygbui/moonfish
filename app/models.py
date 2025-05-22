@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -51,19 +50,20 @@ class Podcast(BaseModel):
     instruction: Optional[str] = None
 
     status: Literal["pending", "active", "completed", "cancelled"]
-    title: Optional[str] = None
     step: Literal["research", "compose", "voice"]
     progress: int = 0
+
+    title: Optional[str] = None
     summary: Optional[str] = None
-    transcript_id: Optional[str] = None
-    audio_id: Optional[str] = None
+    transcript: Optional[str] = None
+    audio_url: Optional[str] = None
+    duration: Optional[int] = None
+
     created_at: datetime
     updated_at: datetime
 
 
 class PodcastRequest(BaseModel):
-    id: UUID4
-    user_id: int
     topic: str
     length: Literal["short", "medium", "long"]
     level: Literal["beginner", "intermediate", "advanced"]
@@ -73,13 +73,12 @@ class PodcastRequest(BaseModel):
 
 
 class PodcastResponse(BaseModel):
-    id: UUID4 = uuid.uuid4()
-    status: Literal["pending", "active", "completed", "cancelled"]
+    id: int
+    status: Literal["pending", "active", "completed", "cancelled"] = "pending"
     title: Optional[str] = None
-    step: Literal["research", "compose", "voice"]
+    step: Optional[Literal["research", "compose", "voice"]] = None
     progress: int = 0
-    summary: Optional[str] = None
-    transcript: Optional[str] = None
     audio_url: Optional[str] = None
+    duration: Optional[int] = None
     created_at: datetime
     updated_at: datetime

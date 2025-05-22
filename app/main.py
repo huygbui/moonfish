@@ -12,12 +12,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google import genai
 from google.genai import types
 from starlette.exceptions import HTTPException
-from typing_extensions import Annotated, Any
+from typing_extensions import Annotated, Any, List
 
 from app.auth import Auth, get_auth
 from app.database import DB, get_db, init_db
 from app.models import (
     AppleAuthRequest,
+    PodcastRequest,
+    PodcastResponse,
     TokenRequest,
     TokenResponse,
     User,
@@ -28,7 +30,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=True)
+    init_db(recreate=False)
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
@@ -143,6 +145,109 @@ def index():
 @app.get("/me")
 def me(user: Annotated[Dict[str, Any], Depends(get_user)]):
     return User(**asdict(user))
+
+
+@app.get("/podcast")
+def get_podcasts(
+    user: Annotated[Dict[str, str], Depends(get_user)],
+    db: Annotated[DB, Depends(get_db)],
+) -> List[PodcastResponse]:
+    podcasts = db.select(
+        table="podcasts",
+        columns=["id", "status", "title", "step", "progress", "audio_url", "duration", "created_at", "updated_at"],
+        where={"user_id": user.id},
+    ).fetchall()
+
+    return [
+        PodcastResponse(
+            id=p.id,
+            status=p.status,
+            title=p.title,
+            step=p.step,
+            progress=p.progress,
+            audio_url=p.audio_url,
+            duration=p.duration,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+        )
+        for p in podcasts
+    ]
+
+
+@app.post("/podcast")
+def create_podcast(
+    req: PodcastRequest,
+    user: Annotated[Dict[str, str], Depends(get_user)],
+    db: Annotated[DB, Depends(get_db)],
+) -> PodcastResponse:
+    print(req)
+    podcast = db.insert(
+        table="podcasts",
+        values={
+            "user_id": user.id,
+            "topic": req.topic,
+            "length": req.length,
+            "level": req.level,
+            "format": req.format,
+            "voice": req.voice,
+            "instruction": req.instruction,
+        },
+    ).fetchone()
+
+    return PodcastResponse(
+        id=podcast.id,
+        status=podcast.status,
+        title=podcast.title,
+        step=podcast.step,
+        progress=podcast.progress,
+        audio_url=podcast.audio_url,
+        duration=podcast.duration,
+        created_at=podcast.created_at,
+        updated_at=podcast.updated_at,
+    )
+
+
+# @app.get("/chat/{chat_id}")
+# def get_chat_messages(
+#     chat_id: int,
+#     user: Annotated[Dict[str, str], Depends(get_user)],
+#     db: Annotated[DB, Depends(get_db)],
+# ) -> MessageCollection:
+#     chat = db.select(
+#         table="chats",
+#         columns=["id", "user_id"],
+#         where={"id": chat_id, "user_id": user.id},
+#     ).fetchone()
+#     if not chat:
+#         raise HTTPException(status_code=404, detail="Chat not found")
+
+#     messages = db.select(
+#         table="messages",
+#         columns=["id", "content", "role"],
+#         where={"chat_id": chat.id},
+#     ).fetchall()
+
+#     return MessageCollection(chat_id=chat.id, messages=[Message(**asdict(m)) for m in messages])
+
+
+# @app.delete("/chat/{chat_id}")
+# def handle_delete_chat(
+#     chat_id: int,
+#     user: Annotated[Dict[str, str], Depends(get_user)],
+#     db: Annotated[DB, Depends(get_db)],
+# ):
+#     chat = db.select(
+#         table="chats",
+#         columns=["id", "user_id"],
+#         where={"id": chat_id, "user_id": user.id},
+#     ).fetchone()
+#     if not chat:
+#         raise HTTPException(status_code=404, detail="Chat not found")
+
+#     db.delete(
+#         table="chats",
+#         where={"id": chat.id},
+#     )
 
 
 @app.get("/audio")
