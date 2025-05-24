@@ -1,84 +1,88 @@
-from datetime import datetime
-from typing import Literal, Optional
+from datetime import UTC, datetime
+from typing import Literal
 
-from pydantic import UUID4, BaseModel, EmailStr
-
-
-class UserSignUpName(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+from pydantic import EmailStr
+from sqlmodel import Field, Relationship, SQLModel
 
 
-class UserSignUp(BaseModel):
-    name: Optional[UserSignUpName] = None
-    email: Optional[EmailStr] = None
-
-
-class AppleAuthRequest(BaseModel):
-    code: str
-    state: Optional[str] = None
-    user: Optional[UserSignUp] = None
-
-
-class TokenRequest(BaseModel):
-    refresh_token: str
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-class User(BaseModel):
-    id: int
+# User
+class UserBase(SQLModel):
     email: EmailStr
     first_name: str
     last_name: str
-    balance: int
-    created_at: datetime
 
 
-class Podcast(BaseModel):
-    id: UUID4
-    user_id: int
-    topic: str
-    length: Literal["short", "medium", "long"]
-    level: Literal["beginner", "intermediate", "advanced"]
-    format: Literal["narrative", "conversational"]
-    voice: Literal["male", "female"]
-    instruction: Optional[str] = None
+class User(UserBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    status: Literal["pending", "active", "completed", "cancelled"]
-    step: Literal["research", "compose", "voice"]
-    progress: int = 0
-
-    title: Optional[str] = None
-    summary: Optional[str] = None
-    transcript: Optional[str] = None
-    audio_url: Optional[str] = None
-    duration: Optional[int] = None
-
-    created_at: datetime
-    updated_at: datetime
+    podcasts: list["Podcast"] = Relationship(back_populates="user")
 
 
-class PodcastRequest(BaseModel):
-    topic: str
-    length: Literal["short", "medium", "long"]
-    level: Literal["beginner", "intermediate", "advanced"]
-    format: Literal["narrative", "conversational"]
-    voice: Literal["male", "female"]
-    instruction: Optional[str] = None
+class UserCreate(UserBase):
+    pass
 
 
-class PodcastResponse(BaseModel):
+class UserResult(UserBase):
     id: int
-    status: Literal["pending", "active", "completed", "cancelled"] = "pending"
-    title: Optional[str] = None
-    step: Optional[Literal["research", "compose", "voice"]] = None
-    progress: int = 0
-    audio_url: Optional[str] = None
-    duration: Optional[int] = None
+    created_at: datetime
+
+
+# Podcast
+class PodcastBase(SQLModel):
+    topic: str
+    length: str
+    level: str
+    format: str
+    voice: str
+    instruction: str | None = None
+
+    status: str = "pending"
+    step: str | None = None
+
+    title: str | None = None
+    audio_url: str | None = None
+    duration: int | None = None
+
+
+class PodcastContentBase(SQLModel):
+    summary: str
+    transcript: str
+
+
+class PodcastContent(PodcastContentBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    podcast_id: int | None = Field(default=None, foreign_key="podcast.id", ondelete="CASCADE")
+    podcast: "Podcast" = Relationship(back_populates="content")
+
+
+class Podcast(PodcastBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    user_id: int | None = Field(default=None, foreign_key="user.id")
+    user: User = Relationship(back_populates="podcasts")
+    content: PodcastContent | None = Relationship(back_populates="podcast", cascade_delete=True)
+
+
+class PodcastCreate(SQLModel):
+    topic: str
+    length: Literal["short", "medium", "long"]
+    level: Literal["beginner", "intermediate", "advanced"]
+    format: Literal["narrative", "conversational"]
+    voice: Literal["male", "female"]
+    instruction: str | None = None
+
+
+class PodcastResult(PodcastBase):
+    id: int
     created_at: datetime
     updated_at: datetime
+
+
+class PodcastContentResult(PodcastContentBase):
+    pass

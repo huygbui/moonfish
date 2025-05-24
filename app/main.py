@@ -1,36 +1,21 @@
-import json
 import os
-from contextlib import aclosing, asynccontextmanager
-from dataclasses import asdict
-from typing import Dict, Generator
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google import genai
-from google.genai import types
-from starlette.exceptions import HTTPException
-from typing_extensions import Annotated, Any, List
+from sqlmodel import Session, select
 
-from app.auth import Auth, get_auth
-from app.database import DB, get_db, init_db
-from app.models import (
-    AppleAuthRequest,
-    PodcastRequest,
-    PodcastResponse,
-    TokenRequest,
-    TokenResponse,
-    User,
-)
+from .database import create_db_and_tables, engine
+from .models import Podcast, PodcastContentResult, PodcastCreate, PodcastResult, User, UserCreate, UserResult
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db(recreate=False)
+    create_db_and_tables()
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
@@ -47,239 +32,62 @@ app.add_middleware(
 )
 
 
-def get_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
-    db: Annotated[Generator[DB, None, None], Depends(get_db)],
-    auth: Annotated[Auth, Depends(get_auth)],
-) -> Dict[str, Any]:
-    try:
-        token = credentials.credentials
-        payload = auth.verify_access_token(token)
-        user_id = payload.get("sub")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = db.select(table="users", columns=["*"], where={"id": user_id}).fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return user
+@app.post("/users/", response_model=UserResult)
+def create_user(req: UserCreate):
+    user = User.model_validate(req)
+    with Session(engine) as session:
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
 
 
-def format_gemini_message(role: str, content: str) -> types.Content:
-    assert role in ("user", "model"), f"Invalid role: {role}"
-    return types.Content(role=role, parts=[types.Part.from_text(text=content)])
+@app.get("/users/", response_model=list[UserResult])
+def get_users():
+    with Session(engine) as session:
+        users = session.exec(select(User)).all()
+        return users
 
 
-async def generate_stream(
-    content: str,
-    chat_id: int,
-    client: genai.Client,
-):
-    with DB() as db:
-        db.insert(
-            table="messages",
-            values={
-                "content": content,
-                "role": "user",
-                "type": "text",
-                "chat_id": chat_id,
-            },
-        )
-        history = db.select(
-            table="messages",
-            columns=["id", "content", "role", "type"],
-            where={"chat_id": chat_id},
-        ).fetchall()
-        if not history:
-            raise HTTPException(status_code=404, detail="Failed to retrieve conversation")
-
-        result = ""
-
-        message = db.insert(
-            table="messages",
-            values={
-                "content": result,
-                "role": "model",
-                "type": "text",
-                "chat_id": chat_id,
-            },
-        ).fetchone()
-        yield {
-            "event": "message_start",
-            "data": json.dumps(
-                {
-                    "id": message.id,
-                    "role": message.role,
-                    "content": "",
-                    "chat_id": chat_id,
-                }
-            ),
-        }
-
-        contents = [format_gemini_message(msg.role, msg.content) for msg in history]
-        generator = await client.aio.models.generate_content_stream(model="gemini-2.0-flash", contents=contents)
-        async with aclosing(generator) as stream:
-            async for chunk in stream:
-                if chunk.text:
-                    yield {
-                        "event": "delta",
-                        "data": json.dumps({"v": chunk.text}),
-                    }
-                    result += chunk.text
-
-        yield {"event": "message_end", "data": json.dumps({"status": "success"})}
-
-        db.update(
-            table="messages",
-            values={"content": result},
-            where={"id": message.id},
-        )
+@app.post("/podcasts/", response_model=PodcastResult)
+def create_podcast(req: PodcastCreate, user_id: int):
+    with Session(engine) as session:
+        user = session.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        podcast = Podcast.model_validate(req)
+        podcast.user_id = user_id
+        podcast.user = user
+        session.add(podcast)
+        session.commit()
+        session.refresh(podcast)
+        return podcast
 
 
-@app.get("/")
-def index():
-    return {"message": "Hello, World!"}
+@app.get("/podcasts/", response_model=list[PodcastResult])
+def get_podcasts(user_id: int):
+    with Session(engine) as session:
+        podcasts = session.exec(select(Podcast).where(Podcast.user_id == user_id)).all()
+        return podcasts
 
 
-@app.get("/me")
-def me(user: Annotated[Dict[str, Any], Depends(get_user)]):
-    return User(**asdict(user))
+@app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
+def get_podcast(podcast_id: int):
+    with Session(engine) as session:
+        podcast = session.get(Podcast, podcast_id)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+        return podcast
 
 
-@app.get("/podcast")
-def get_podcasts(
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-) -> List[PodcastResponse]:
-    podcasts = db.select(
-        table="podcasts",
-        columns=["id", "status", "title", "step", "progress", "audio_url", "duration", "created_at", "updated_at"],
-        where={"user_id": user.id},
-    ).fetchall()
+@app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
+def get_podcast_content(podcast_id: int):
+    with Session(engine) as session:
+        podcast = session.get(Podcast, podcast_id)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
 
-    return [
-        PodcastResponse(
-            id=p.id,
-            status=p.status,
-            title=p.title,
-            step=p.step,
-            progress=p.progress,
-            audio_url=p.audio_url,
-            duration=p.duration,
-            created_at=p.created_at,
-            updated_at=p.updated_at,
-        )
-        for p in podcasts
-    ]
+        if not podcast.content:
+            raise HTTPException(status_code=404, detail="Podcast content not found")
 
-
-@app.post("/podcast")
-def create_podcast(
-    req: PodcastRequest,
-    user: Annotated[Dict[str, str], Depends(get_user)],
-    db: Annotated[DB, Depends(get_db)],
-) -> PodcastResponse:
-    print(req)
-    podcast = db.insert(
-        table="podcasts",
-        values={
-            "user_id": user.id,
-            "topic": req.topic,
-            "length": req.length,
-            "level": req.level,
-            "format": req.format,
-            "voice": req.voice,
-            "instruction": req.instruction,
-        },
-    ).fetchone()
-
-    return PodcastResponse(
-        id=podcast.id,
-        status=podcast.status,
-        title=podcast.title,
-        step=podcast.step,
-        progress=podcast.progress,
-        audio_url=podcast.audio_url,
-        duration=podcast.duration,
-        created_at=podcast.created_at,
-        updated_at=podcast.updated_at,
-    )
-
-
-# @app.get("/chat/{chat_id}")
-# def get_chat_messages(
-#     chat_id: int,
-#     user: Annotated[Dict[str, str], Depends(get_user)],
-#     db: Annotated[DB, Depends(get_db)],
-# ) -> MessageCollection:
-#     chat = db.select(
-#         table="chats",
-#         columns=["id", "user_id"],
-#         where={"id": chat_id, "user_id": user.id},
-#     ).fetchone()
-#     if not chat:
-#         raise HTTPException(status_code=404, detail="Chat not found")
-
-#     messages = db.select(
-#         table="messages",
-#         columns=["id", "content", "role"],
-#         where={"chat_id": chat.id},
-#     ).fetchall()
-
-#     return MessageCollection(chat_id=chat.id, messages=[Message(**asdict(m)) for m in messages])
-
-
-# @app.delete("/chat/{chat_id}")
-# def handle_delete_chat(
-#     chat_id: int,
-#     user: Annotated[Dict[str, str], Depends(get_user)],
-#     db: Annotated[DB, Depends(get_db)],
-# ):
-#     chat = db.select(
-#         table="chats",
-#         columns=["id", "user_id"],
-#         where={"id": chat_id, "user_id": user.id},
-#     ).fetchone()
-#     if not chat:
-#         raise HTTPException(status_code=404, detail="Chat not found")
-
-#     db.delete(
-#         table="chats",
-#         where={"id": chat.id},
-#     )
-
-
-@app.get("/audio")
-async def get_audio():
-    audio_path = "static/sound.wav"
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=404, detail="Audio file not found")
-    return FileResponse(audio_path, media_type="audio/wav", filename="sound.mp3")
-
-
-@app.post("/auth/apple/callback", response_model=TokenResponse)
-def handle_apple_callback(req: AppleAuthRequest, auth: Annotated[Auth, Depends(get_auth)]):
-    # TODO: Exchange code for tokens
-    # tokens = await exchange_for_tokens(req.code)
-    # id_token = tokens["id_token"]
-
-    # TODO: Verify id_token
-    # decoded = await verify_id_token(id_token)
-    # sub = decoded["sub"]
-    # email = decoded.get("email")
-    # name = {}
-    apple_sub = "mock_sub"
-    apple_refresh_token = "mock_refresh"
-    user_id = auth.find_or_add_user("apple", apple_sub, apple_refresh_token, req.user)
-    access_token = auth.create_access_token(user_id)
-    refresh_token = auth.create_and_add_refresh_token(user_id)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
-
-
-@app.post("/auth/token", response_model=TokenResponse)
-def handle_token(req: TokenRequest, auth: Annotated[Auth, Depends(get_auth)]):
-    user_id = auth.verify_refresh_token(req.refresh_token)
-    access_token = auth.create_access_token(user_id)
-    refresh_token = auth.create_and_add_refresh_token(user_id)
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+        return podcast.content
