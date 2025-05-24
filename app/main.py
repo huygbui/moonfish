@@ -8,7 +8,7 @@ from google import genai
 from sqlmodel import select
 
 from .database import create_db_and_tables
-from .deps import SessionDep
+from .deps import SessionDep, UserDep
 from .models import Podcast, PodcastContentResult, PodcastCreate, PodcastResult, User, UserCreate, UserResult
 
 load_dotenv()
@@ -49,12 +49,9 @@ def get_users(session: SessionDep):
 
 
 @app.post("/podcasts/", response_model=PodcastResult)
-def create_podcast(req: PodcastCreate, user_id: int, session: SessionDep):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep):
     podcast = Podcast.model_validate(req)
-    podcast.user_id = user_id
+    podcast.user_id = user.id
     podcast.user = user
     session.add(podcast)
     session.commit()
@@ -63,13 +60,13 @@ def create_podcast(req: PodcastCreate, user_id: int, session: SessionDep):
 
 
 @app.get("/podcasts/", response_model=list[PodcastResult])
-def get_podcasts(user_id: int, session: SessionDep):
-    podcasts = session.exec(select(Podcast).where(Podcast.user_id == user_id)).all()
+def get_podcasts(user: UserDep, session: SessionDep):
+    podcasts = session.exec(select(Podcast).where(Podcast.user_id == user.id)).all()
     return podcasts
 
 
 @app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
-def get_podcast(podcast_id: int, session: SessionDep):
+def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
     podcast = session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
@@ -77,7 +74,7 @@ def get_podcast(podcast_id: int, session: SessionDep):
 
 
 @app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
-def get_podcast_content(podcast_id: int, session: SessionDep):
+def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDep):
     podcast = session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
