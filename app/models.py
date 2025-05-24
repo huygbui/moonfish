@@ -46,7 +46,6 @@ class PodcastBase(SQLModel):
 
 
 class PodcastContentBase(SQLModel):
-    summary: str
     transcript: str
 
 
