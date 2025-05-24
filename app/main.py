@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from .database import create_db_and_tables, engine
+from .database import create_db_and_tables
+from .deps import SessionDep
 from .models import Podcast, PodcastContentResult, PodcastCreate, PodcastResult, User, UserCreate, UserResult
 
 load_dotenv()
@@ -33,61 +34,55 @@ app.add_middleware(
 
 
 @app.post("/users/", response_model=UserResult)
-def create_user(req: UserCreate):
+def create_user(req: UserCreate, session: SessionDep):
     user = User.model_validate(req)
-    with Session(engine) as session:
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-        return user
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
 
 
 @app.get("/users/", response_model=list[UserResult])
-def get_users():
-    with Session(engine) as session:
-        users = session.exec(select(User)).all()
-        return users
+def get_users(session: SessionDep):
+    users = session.exec(select(User)).all()
+    return users
 
 
 @app.post("/podcasts/", response_model=PodcastResult)
-def create_podcast(req: PodcastCreate, user_id: int):
-    with Session(engine) as session:
-        user = session.get(User, user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        podcast = Podcast.model_validate(req)
-        podcast.user_id = user_id
-        podcast.user = user
-        session.add(podcast)
-        session.commit()
-        session.refresh(podcast)
-        return podcast
+def create_podcast(req: PodcastCreate, user_id: int, session: SessionDep):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    podcast = Podcast.model_validate(req)
+    podcast.user_id = user_id
+    podcast.user = user
+    session.add(podcast)
+    session.commit()
+    session.refresh(podcast)
+    return podcast
 
 
 @app.get("/podcasts/", response_model=list[PodcastResult])
-def get_podcasts(user_id: int):
-    with Session(engine) as session:
-        podcasts = session.exec(select(Podcast).where(Podcast.user_id == user_id)).all()
-        return podcasts
+def get_podcasts(user_id: int, session: SessionDep):
+    podcasts = session.exec(select(Podcast).where(Podcast.user_id == user_id)).all()
+    return podcasts
 
 
 @app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
-def get_podcast(podcast_id: int):
-    with Session(engine) as session:
-        podcast = session.get(Podcast, podcast_id)
-        if not podcast:
-            raise HTTPException(status_code=404, detail="Podcast not found")
-        return podcast
+def get_podcast(podcast_id: int, session: SessionDep):
+    podcast = session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+    return podcast
 
 
 @app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
-def get_podcast_content(podcast_id: int):
-    with Session(engine) as session:
-        podcast = session.get(Podcast, podcast_id)
-        if not podcast:
-            raise HTTPException(status_code=404, detail="Podcast not found")
+def get_podcast_content(podcast_id: int, session: SessionDep):
+    podcast = session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
 
-        if not podcast.content:
-            raise HTTPException(status_code=404, detail="Podcast content not found")
+    if not podcast.content:
+        raise HTTPException(status_code=404, detail="Podcast content not found")
 
-        return podcast.content
+    return podcast.content
