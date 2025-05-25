@@ -89,7 +89,7 @@ def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, session: 
     podcast = session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
-    data = req.model_dump(exclude_unset=True)
+    data = req.model_dump(exclude_unset=True, mode="json")
     podcast.sqlmodel_update(data)
     session.add(podcast)
     session.commit()

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import EmailStr
+from pydantic import AnyUrl, EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -84,12 +84,20 @@ class PodcastResult(PodcastBase):
 
 
 class PodcastUpdate(SQLModel):
-    status: str | None = None
-    step: str | None = None
+    status: Literal["pending", "active", "completed", "cancelled"] | None = None
+    step: Literal["research", "compose", "voice"] | None = None
 
     title: str | None = None
-    audio_url: str | None = None
+    audio_url: AnyUrl | None = None
     duration: int | None = None
+
+
+class PodcastUpdateData(SQLModel):
+    status: str | None = None
+    step: str
+    title: str
+    audio_url: str
+    duration: int
 
 
 class PodcastContentCreate(PodcastContentBase):
