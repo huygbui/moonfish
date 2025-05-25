@@ -9,7 +9,16 @@ from sqlmodel import select
 
 from .database import create_db_and_tables
 from .deps import SessionDep, UserDep
-from .models import Podcast, PodcastContentResult, PodcastCreate, PodcastResult, User, UserCreate, UserResult
+from .models import (
+    Podcast,
+    PodcastContentResult,
+    PodcastCreate,
+    PodcastResult,
+    PodcastUpdate,
+    User,
+    UserCreate,
+    UserResult,
+)
 
 load_dotenv()
 
@@ -70,6 +79,19 @@ def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
     podcast = session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
+    return podcast
+
+
+@app.put("/podcasts/{podcast_id}", response_model=PodcastResult)
+def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, session: SessionDep):
+    podcast = session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+    data = req.model_dump(exclude_unset=True)
+    podcast.sqlmodel_update(data)
+    session.add(podcast)
+    session.commit()
+    session.refresh(podcast)
     return podcast
 
 

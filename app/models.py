@@ -83,5 +83,14 @@ class PodcastResult(PodcastBase):
     updated_at: datetime
 
 
+class PodcastUpdate(SQLModel):
+    status: str | None = None
+    step: str | None = None
+
+    title: str | None = None
+    audio_url: str | None = None
+    duration: int | None = None
+
+
 class PodcastContentResult(PodcastContentBase):
     pass
