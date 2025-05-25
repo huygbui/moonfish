@@ -111,4 +111,6 @@ class PodcastContentCreate(PodcastContentBase):
 
 
 class PodcastContentResult(PodcastContentBase):
-    pass
+    id: int
+    created_at: datetime
+    updated_at: datetime
