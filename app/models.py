@@ -92,5 +92,9 @@ class PodcastUpdate(SQLModel):
     duration: int | None = None
 
 
+class PodcastContentCreate(PodcastContentBase):
+    pass
+
+
 class PodcastContentResult(PodcastContentBase):
     pass

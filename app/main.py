@@ -11,6 +11,8 @@ from .database import create_db_and_tables
 from .deps import SessionDep, UserDep
 from .models import (
     Podcast,
+    PodcastContent,
+    PodcastContentCreate,
     PodcastContentResult,
     PodcastCreate,
     PodcastResult,
@@ -105,3 +107,18 @@ def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDep):
         raise HTTPException(status_code=404, detail="Podcast content not found")
 
     return podcast.content
+
+
+@app.post("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
+def create_podcast_content(
+    req: PodcastContentCreate, podcast_id: int, user: UserDep, session: SessionDep
+):
+    podcast = session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+    content = PodcastContent(transcript=req.transcript)
+    podcast.content = content
+    session.add(podcast)
+    session.commit()
+    session.refresh(content)
+    return content
