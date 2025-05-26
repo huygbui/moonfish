@@ -1,10 +1,5 @@
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+from .config import settings
 
-engine = create_engine(sqlite_url)
-
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
+engine = create_engine(str(settings.sqlalchemy_url))

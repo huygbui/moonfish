@@ -1,7 +1,38 @@
-from pathlib import Path
+from pydantic import (
+    PostgresDsn,
+    computed_field,
+)
+from pydantic_core import MultiHostUrl
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Project
-PROJ_ROOT = Path(__file__).resolve().parent.parent
 
-# DB
-DB_PATH = str(PROJ_ROOT / "data" / "moonfish.db")
+class Settings(BaseSettings):
+    gemini_api_key: str
+
+    postgres_password: str
+    postgres_user: str
+    postgres_db: str
+    postgres_server: str
+    postgres_port: int
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def sqlalchemy_url(self) -> PostgresDsn:
+        return MultiHostUrl.build(
+            scheme="postgresql+psycopg",
+            username=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_server,
+            port=self.postgres_port,
+            path=self.postgres_db,
+        )
+
+    model_config = SettingsConfigDict(
+        # Use top level .env file (one level above ./backend/)
+        env_file=".env",
+        env_ignore_empty=True,
+        extra="ignore",
+    )
+
+
+settings = Settings()

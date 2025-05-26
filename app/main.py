@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from sqlmodel import select
 
-from .database import create_db_and_tables
 from .deps import SessionDep, UserDep
 from .models import (
     Podcast,
@@ -27,7 +26,6 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    create_db_and_tables()
     api_key = os.getenv("GEMINI_API_KEY")
     app.state.genai_client = genai.Client(api_key=api_key)
     yield
