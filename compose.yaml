@@ -20,5 +20,29 @@ services:
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_DB=${POSTGRES_DB?Variable not set}
 
+  hatchet-lite:
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
+    ports:
+      - 8888:8888
+      - 7077:7077
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      - DATABASE_POSTGRES_PORT=5432
+      - DATABASE_POSTGRES_HOST=db
+      - SERVER_AUTH_COOKIE_DOMAIN=localhost
+      - SERVER_AUTH_COOKIE_INSECURE=true
+      - SERVER_GRPC_BIND_ADDRESS=0.0.0.0
+      - SERVER_GRPC_INSECURE=true
+      - SERVER_GRPC_BROADCAST_ADDRESS=localhost:7077
+      - SERVER_GRPC_PORT=7077
+      - SERVER_URL=http://localhost:8888
+      - SERVER_AUTH_SET_EMAIL_VERIFIED=true
+      - SERVER_DEFAULT_ENGINE_VERSION=V1
+    volumes:
+      - hatchet-lite-config:/config
+
 volumes:
   db-data:
+  hatchet-lite-config:
