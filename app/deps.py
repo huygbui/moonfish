@@ -1,23 +1,23 @@
-from typing import Annotated, Generator
+from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, HTTPException
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import engine
+from .database import async_session
 from .models import User
 
 
-def get_session() -> Generator[Session, None, None]:
-    with Session(engine) as session:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
         yield session
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 
-def get_user(session: SessionDep) -> User:
+async def get_user(session: SessionDep) -> User:
     # TODO: Update to use Token instead of hardcoding
-    user = session.get(User, 1)
+    user = await session.get(User, 1)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

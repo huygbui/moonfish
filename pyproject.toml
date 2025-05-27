@@ -10,10 +10,10 @@ dependencies = [
     "cryptography>=44.0.2",
     "fastapi[standard]>=0.115.11",
     "google-genai>=1.8.0",
-    "hatchet-sdk>=1.10.2",
     "psycopg[binary]>=3.2.9",
     "pydantic-settings>=2.9.1",
     "pyjwt>=2.10.1",
+    "sqlalchemy[asyncio]>=2.0.41",
     "sqlmodel>=0.0.24",
     "sse-starlette>=2.2.1",
 ]
