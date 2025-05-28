@@ -1,0 +1,74 @@
+from hatchet_sdk import Context, EmptyModel, Hatchet
+
+from .models import Podcast, PodcastTaskInput, PodcastResearch, PodcastResearchResult, PodcastCompose, PodcastComposeResult, PodcastVoice, PodcastVoiceResult
+from .database import async_session
+
+
+hatchet = Hatchet(debug=True)
+
+podcast_generation = hatchet.workflow(name="PodcastGeneration")
+
+@podcast_generation.task()
+async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResult:
+    # Update db status
+    async with async_session() as session:
+        podcast = await session.get(Podcast, input.id)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+        # data = req.model_dump(exclude_unset=True, mode="json")
+        # podcast.sqlmodel_update(data)
+        podcast.status = "active"
+        podcast.step = "research"
+        session.add(podcast)
+        await session.commit()
+        await session.refresh(podcast)
+
+    return PodcastResearchResult(
+        id=input.id,
+        result="research result"
+    )
+
+
+@podcast_generation.task(parents=[research])
+async def compose(input: EmptyModel, ctx: Context) -> PodcastComposeResult:
+    input = ctx.task_output(research)
+    research_result = PodcastResearchResult.model_validate(input)
+
+    # Update db status
+    async with async_session() as session:
+        podcast = await session.get(Podcast, input.id)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+        # data = req.model_dump(exclude_unset=True, mode="json")
+        # podcast.sqlmodel_update(data)
+        podcast.step = "compose"
+        session.add(podcast)
+        await session.commit()
+        await session.refresh(podcast)
+
+    return PodcastComposeResult(
+        id=research_result.id,
+        result="compose result"
+    )
+
+@podcast_generation.task(parents=[compose])
+async def voice(input: EmptyModel, ctx: Context):
+    input = ctx.task_output(compose)
+    compose_result = PodcastComposeResult.model_validate(input)
+
+    # Update db status
+    async with async_session() as session:
+        podcast = await session.get(Podcast, input.id)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+        # data = req.model_dump(exclude_unset=True, mode="json")
+        # podcast.sqlmodel_update(data)
+        podcast.step = "voice"
+        session.add(podcast)
+        await session.commit()
+        await session.refresh(podcast)
+
+    return PodcastVoiceResult(
+        id=compose_result.id,
+        result="voice result"
+    )

@@ -114,3 +114,32 @@ class PodcastContentResult(PodcastContentBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+# Workflows
+class PodcastTaskInput(PodcastCreate):
+    id: int
+
+
+class PodcastResearch(SQLModel):
+    result: str
+
+
+class PodcastResearchResult(PodcastResearch):
+    id: int
+
+
+class PodcastCompose(SQLModel):
+    result: str
+
+
+class PodcastComposeResult(PodcastCompose):
+    id: int
+
+
+class PodcastVoice(SQLModel):
+    result: str
+
+
+class PodcastVoiceResult(PodcastVoice):
+    id: int

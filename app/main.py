@@ -15,11 +15,13 @@ from .models import (
     PodcastContentResult,
     PodcastCreate,
     PodcastResult,
+    PodcastTaskInput,
     PodcastUpdate,
     User,
     UserCreate,
     UserResult,
 )
+from .workflows import podcast_generation
 
 load_dotenv()
 
@@ -66,6 +68,15 @@ async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep)
     session.add(podcast)
     await session.commit()
     await session.refresh(podcast)
+
+    task = PodcastTaskInput.model_validate(podcast)
+    run_id = podcast_generation.run_no_wait(task)
+
+    # podcast.run_id = run_id
+    # session.add(podcast)
+    # await session.commit()
+    # await session.refresh(podcast)
+
     return podcast
 
 
