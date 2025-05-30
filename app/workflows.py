@@ -1,12 +1,23 @@
+from fastapi import HTTPException
+from google import genai
 from hatchet_sdk import Context, EmptyModel, Hatchet
 
-from .models import Podcast, PodcastTaskInput, PodcastResearch, PodcastResearchResult, PodcastCompose, PodcastComposeResult, PodcastVoice, PodcastVoiceResult
+from .config import settings
 from .database import async_session
-
+from .models import (
+    Podcast,
+    PodcastComposeResult,
+    PodcastResearchResult,
+    PodcastTaskInput,
+    PodcastVoiceResult,
+)
 
 hatchet = Hatchet(debug=True)
 
 podcast_generation = hatchet.workflow(name="PodcastGeneration")
+
+client = genai.Client(api_key=settings.gemini_api_key)
+
 
 @podcast_generation.task()
 async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResult:
@@ -23,14 +34,12 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
         await session.commit()
         await session.refresh(podcast)
 
-    return PodcastResearchResult(
-        id=input.id,
-        result="research result"
-    )
+    return PodcastResearchResult(id=input.id, result="research result")
 
 
 @podcast_generation.task(parents=[research])
 async def compose(input: EmptyModel, ctx: Context) -> PodcastComposeResult:
+    # Get result
     input = ctx.task_output(research)
     research_result = PodcastResearchResult.model_validate(input)
 
@@ -46,13 +55,12 @@ async def compose(input: EmptyModel, ctx: Context) -> PodcastComposeResult:
         await session.commit()
         await session.refresh(podcast)
 
-    return PodcastComposeResult(
-        id=research_result.id,
-        result="compose result"
-    )
+    return PodcastComposeResult(id=research_result.id, result="compose result")
+
 
 @podcast_generation.task(parents=[compose])
 async def voice(input: EmptyModel, ctx: Context):
+    # Get result
     input = ctx.task_output(compose)
     compose_result = PodcastComposeResult.model_validate(input)
 
@@ -68,7 +76,4 @@ async def voice(input: EmptyModel, ctx: Context):
         await session.commit()
         await session.refresh(podcast)
 
-    return PodcastVoiceResult(
-        id=compose_result.id,
-        result="voice result"
-    )
+    return PodcastVoiceResult(id=compose_result.id, result="voice result")
