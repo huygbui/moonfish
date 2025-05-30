@@ -1,10 +1,8 @@
-import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from google import genai
 from sqlmodel import select
 
 from .deps import SessionDep, UserDep
@@ -28,8 +26,6 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    api_key = os.getenv("GEMINI_API_KEY")
-    app.state.genai_client = genai.Client(api_key=api_key)
     yield
 
 
