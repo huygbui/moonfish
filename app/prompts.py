@@ -22,34 +22,34 @@ YOUR INPUTS
     * An optional description of specific requests or contexts
 
 OUTPUT STRUCTURE & CONTENT
-Produce a research document that follows the below structure:
-1. Podcast Angle/Hook:
+1. Overview:
+    *  A concise summary explaining what this research document is for and how it's tailored to the original podcast request.
+2. Angle/Hook:
     * 1-2 compelling themes or hooks for the episode. Why should someone listen?
-2. Key Sections/Themes:
-    * Number of sections appropriate for the podcast's length
+3. Key Sections/Themes:
+    * Number of sections appropriate for the podcast's length:
+        * Short: 2-3 sections
+        * Medium: 3-4 sections
+        * Long: 4-5 sections
     * Per section content:
         * Core information: key facts, definitions (especially for beginner/intermediate level), stats, background.
         * Interesting details & anecdotes: examples, surprising facts, human interest stories, historical context, quotes.
-        * Potential discussion points or contrasting viewpoints (useful for for conversational format).
-3. "Wow" Moments:
+        * Potential discussion points: unresolved controversies or contrasting viewpoints (useful for for conversational format).
+4. "Wow" Moments:
     * 3-5 distinct, surprising, or highly engaging facts.
-4. Key Terminology & Definitions:
-    * Short glossary of essential terms with clear definitions.
-    * Required for beginner or intermediate audiences
-5. Relevant Analogies or Metaphors:
-    * 1-2 analogies to explain complex aspects accessibly.
-6. Conclusion/Takeaway Ideas:
+5. Conclusion/Takeaway Ideas:
     * 1-3 main takeaways or concluding thoughts.
-7. Key Sources:
+6. Key Sources:
     * 3-5 primary or highly credible resources used.
 
 IMPORTANT GUIDELINES
-Produce a research document that adheres to the below guidelines:
 1. Accuracy: Ensure all factual information is accurate.
 2. Engagement: Prioritize information that is likely to captivate a listener.
 3. Clarity: Present information clearly.
-4. Follow Instructions: Pay close attention to length, level, format, and any further instruction.
-5. Output: Provide research material, NOT the script itself.
+4. Follow Instructions: Pay close attention to length, level, format, and any additional instruction.
+5. Direct:
+    * Start immediately with research content (no intros/meta-comments like "Here is a comprehensive research document...")
+    * Provide only research material, NOT the script itself
 """
 
 research_user = """
