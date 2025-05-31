@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str
 
+    exa_api_key: str
+
     postgres_password: str
     postgres_user: str
     postgres_db: str

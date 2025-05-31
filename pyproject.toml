@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.16.1",
     "apsw>=3.49.1.0",
     "cryptography>=44.0.2",
+    "exa-py>=1.13.1",
     "fastapi[standard]>=0.115.11",
     "google-genai>=1.8.0",
     "hatchet-sdk>=1.10.2",
