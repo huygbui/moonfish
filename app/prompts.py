@@ -70,3 +70,10 @@ Level: {level}
 Format: {format}
 Instruction: {instruction}
 """
+
+compose_system = """
+"""
+
+compose_user = """
+{research_result}
+"""
