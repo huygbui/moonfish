@@ -1,3 +1,5 @@
+from string import Template
+
 from fastapi import HTTPException
 from google import genai
 from google.genai import types
@@ -29,8 +31,6 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
         podcast = await session.get(Podcast, input.id)
         if not podcast:
             raise HTTPException(status_code=404, detail="Podcast not found")
-        # data = req.model_dump(exclude_unset=True, mode="json")
-        # podcast.sqlmodel_update(data)
         podcast.status = "active"
         podcast.step = "research"
         session.add(podcast)
@@ -40,20 +40,24 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
     # Generate
     result = await client.aio.models.generate_content(
         model=gemini_model,
-        contents=[prompts.research_system, prompts.research_user.format_map(input.model_dump())],
+        contents=[
+            prompts.research_system,
+            Template(prompts.research_user).substitute(input.model_dump()),
+        ],
         config=types.GenerateContentConfig(
-            tools=[tools.search],
+            tools=[tools.web_search],
         ),
     )
 
-    return PodcastResearchResult(id=input.id, result=result.text, metadata=result.usage_metadata)
+    return PodcastResearchResult(
+        id=input.id, input=input, result=result.text, usage=str(result.usage_metadata.model_dump())
+    )
 
 
 @podcast_generation.task(parents=[research])
-async def compose(input: EmptyModel, ctx: Context) -> PodcastComposeResult:
+async def compose(_: EmptyModel, ctx: Context) -> PodcastComposeResult:
     # Get result
-    input = ctx.task_output(research)
-    research_result = PodcastResearchResult.model_validate(input)
+    input = PodcastResearchResult.model_validate(ctx.task_output(research))
 
     # Update db status
     async with async_session() as session:
@@ -70,17 +74,26 @@ async def compose(input: EmptyModel, ctx: Context) -> PodcastComposeResult:
     # Generate
     result = await client.aio.models.generate_content(
         model=gemini_model,
-        contents=[prompts.compose_system, prompts.compose_user.format(research_result)],
+        contents=[
+            prompts.compose_system,
+            Template(prompts.compose_user).substitute(
+                input.input.model_dump(), research_result=input.result
+            ),
+        ],
     )
 
-    return PodcastComposeResult(id=input.id, result=result.text, metadata=result.usage_metadata)
+    return PodcastComposeResult(
+        id=input.id,
+        input=input.input,
+        result=result.text,
+        usage=str(result.usage_metadata.model_dump()),
+    )
 
 
 @podcast_generation.task(parents=[compose])
-async def voice(input: EmptyModel, ctx: Context):
+async def voice(_: EmptyModel, ctx: Context):
     # Get result
-    input = ctx.task_output(compose)
-    compose_result = PodcastComposeResult.model_validate(input)
+    input = PodcastComposeResult.model_validate(ctx.task_output(compose))
 
     # Update db status
     async with async_session() as session:
@@ -94,4 +107,6 @@ async def voice(input: EmptyModel, ctx: Context):
         await session.commit()
         await session.refresh(podcast)
 
-    return PodcastVoiceResult(id=compose_result.id, result="voice result")
+    return PodcastVoiceResult(
+        id=input.id, input=input.input, result="some result", usage="some usage"
+    )

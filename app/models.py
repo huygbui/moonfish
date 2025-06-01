@@ -127,7 +127,8 @@ class PodcastResearch(SQLModel):
 
 class PodcastResearchResult(PodcastResearch):
     id: int
-    metadata: str
+    input: PodcastTaskInput
+    usage: str
 
 
 class PodcastCompose(SQLModel):
@@ -136,7 +137,8 @@ class PodcastCompose(SQLModel):
 
 class PodcastComposeResult(PodcastCompose):
     id: int
-    metadata: str
+    input: PodcastTaskInput
+    usage: str
 
 
 class PodcastVoice(SQLModel):
@@ -145,4 +147,5 @@ class PodcastVoice(SQLModel):
 
 class PodcastVoiceResult(PodcastVoice):
     id: int
-    metadata: str
+    input: PodcastTaskInput
+    usage: str
