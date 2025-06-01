@@ -95,7 +95,7 @@ YOUR INPUTS
 
 OUTPUT STRUCTURE
 1. For conversation format:
-    * Two spearkers dialogue. Each turn is explicitly tagged [Speaker 1]: ... [Speaker 2]: ...
+    * Two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
 2. For narrative format:
     * Single script with no speaker tags
 
