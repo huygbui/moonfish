@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -19,6 +20,7 @@ from .models import (
     UserCreate,
     UserResult,
 )
+from .storage import S3Error, minio_bucket, minio_client
 from .workflows import podcast_generation
 
 load_dotenv()
@@ -129,3 +131,24 @@ async def create_podcast_content(
     await session.commit()
     await session.refresh(content)
     return content
+
+
+@app.get("/podcasts/{podcast_id}/audio")
+def get_podcast_audio(podcast_id: int, user: UserDep):
+    try:
+        object_name = f"{podcast_id}.mp3"
+        stat = minio_client.stat_object(minio_bucket, object_name)
+
+        # Generate presigned URL valid for 1 hour
+        url = minio_client.presigned_get_object(
+            bucket_name=minio_bucket,
+            object_name=object_name,
+            expires=timedelta(hours=1),  # 1 hour expiration
+        )
+        return url
+
+    except S3Error as e:
+        if e.code == "NoSuchKey":
+            raise HTTPException(status_code=404, detail="Podcast audio not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

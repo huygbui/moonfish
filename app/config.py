@@ -9,6 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str
+    gemini_tts_model: str
 
     exa_api_key: str
 
@@ -17,6 +18,12 @@ class Settings(BaseSettings):
     postgres_db: str
     postgres_server: str
     postgres_port: int
+
+    minio_access_key: str
+    minio_secret_key: str
+    minio_bucket: str
+    minio_server: str
+    minio_port: int
 
     @computed_field  # type: ignore[prop-decorator]
     @property
