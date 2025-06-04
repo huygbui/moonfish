@@ -131,6 +131,11 @@ class PodcastComposeResult(SQLModel):
     usage: dict[str, Any]
 
 
+class PodcastComposeResponse(SQLModel):
+    title: str
+    script: str
+
+
 class PodcastVoiceResult(SQLModel):
     result: str
     usage: dict[str, Any]

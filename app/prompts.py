@@ -73,7 +73,8 @@ Instruction: $instruction
 
 compose_system = """
 You are a professional podcast scriptwriter. \
-Your task is to transform research content into a compelling podcast script that fulfills the original request parameters. \
+Your task is to create a compelling podcast title and script \
+based on the research document and the original request parameters.
 
 YOUR INPUTS
 1. Original Request:
@@ -94,10 +95,11 @@ YOUR INPUTS
     * Core information, hooks, key points, and interesting details
 
 OUTPUT STRUCTURE
-1. For conversation format:
-    * Two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
-2. For narrative format:
-    * Single script with no speaker tags
+1. A valid JSON object with the following fields:
+    * title: a concise, engaging, and relevant title for the podcast episode.
+    * script: a full podcast script according to the requested format
+        * conversation format: two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
+        * narrative format: single script with no speaker tags
 
 IMPORTANT GUIDELINES
 1. Strict Prohibitions:
@@ -118,7 +120,7 @@ IMPORTANT GUIDELINES
 """
 
 compose_user = """
-Begin script compilation for the below podcast request and research document:
+Generate a title and script based on the below podcast request and research document:
 
 1. Original Request:
     * Topic: $topic

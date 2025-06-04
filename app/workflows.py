@@ -15,6 +15,7 @@ from .config import settings
 from .database import async_session
 from .models import (
     Podcast,
+    PodcastComposeResponse,
     PodcastComposeResult,
     PodcastContent,
     PodcastResearchResult,
@@ -53,7 +54,7 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
         await session.commit()
 
         # Generate
-        result = await gemini_client.aio.models.generate_content(
+        response = await gemini_client.aio.models.generate_content(
             model=gemini_model,
             contents=[
                 prompts.research_system,
@@ -64,7 +65,7 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
             ),
         )
 
-    return PodcastResearchResult(result=result.text, usage=result.usage_metadata.model_dump())
+    return PodcastResearchResult(result=response.text, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[research])
@@ -83,7 +84,7 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
         await session.refresh(podcast)
 
         # Generate transcript
-        result = await gemini_client.aio.models.generate_content(
+        response = await gemini_client.aio.models.generate_content(
             model=gemini_model,
             contents=[
                 prompts.compose_system,
@@ -91,14 +92,21 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
                     input.model_dump(), research_result=research_output.result
                 ),
             ],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=PodcastComposeResponse,
+            ),
         )
 
+        result = PodcastComposeResponse.model_validate_json(response.text)
+
         # Update db transcript
-        podcast.content = PodcastContent(transcript=result.text)
+        podcast.title = result.title
+        podcast.content = PodcastContent(transcript=result.script)
         session.add(podcast)
         await session.commit()
 
-    return PodcastComposeResult(result=result.text, usage=result.usage_metadata.model_dump())
+    return PodcastComposeResult(result=result.script, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
@@ -117,7 +125,7 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         await session.refresh(podcast)
 
         # Generate audio
-        result = await gemini_client.aio.models.generate_content(
+        response = await gemini_client.aio.models.generate_content(
             model=gemini_tts_model,
             contents=compose_output.result,
             config=types.GenerateContentConfig(
@@ -147,7 +155,7 @@ async def voice(input: PodcastTaskInput, ctx: Context):
                 ),
             ),
         )
-        data = result.candidates[0].content.parts[0].inline_data.data
+        data = response.candidates[0].content.parts[0].inline_data.data
         name = f"{input.id}.mp3"
 
         # Process and upload to minio
@@ -173,7 +181,7 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         session.add(podcast)
         await session.commit()
 
-    return PodcastVoiceResult(result=name, usage=result.usage_metadata.model_dump())
+    return PodcastVoiceResult(result=name, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.on_failure_task()
