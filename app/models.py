@@ -46,6 +46,7 @@ class PodcastBase(SQLModel):
 
 
 class PodcastContentBase(SQLModel):
+    title: str = Field(default="Untitled", sa_column_kwargs={"server_default": "Untitled"})
     transcript: str
 
 
@@ -71,6 +72,7 @@ class Podcast(PodcastBase, table=True):
 
     user_id: int | None = Field(default=None, foreign_key="user.id")
     user: User = Relationship(back_populates="podcasts")
+
     content: PodcastContent | None = Relationship(back_populates="podcast", cascade_delete=True)
 
 
