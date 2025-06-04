@@ -6,7 +6,7 @@ from typing import Tuple
 
 from google import genai
 from google.genai import types
-from hatchet_sdk import Context, EmptyModel, Hatchet
+from hatchet_sdk import Context, Hatchet
 from minio import Minio
 from pydub import AudioSegment
 
@@ -64,15 +64,13 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
             ),
         )
 
-    return PodcastResearchResult(
-        id=input.id, input=input, result=result.text, usage=result.usage_metadata.model_dump()
-    )
+    return PodcastResearchResult(result=result.text, usage=result.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[research])
-async def compose(_: EmptyModel, ctx: Context) -> PodcastComposeResult:
-    # Get input
-    input = PodcastResearchResult.model_validate(ctx.task_output(research))
+async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult:
+    # Get output
+    research_output = PodcastResearchResult.model_validate(ctx.task_output(research))
 
     # Update db status
     async with async_session() as session:
@@ -90,7 +88,7 @@ async def compose(_: EmptyModel, ctx: Context) -> PodcastComposeResult:
             contents=[
                 prompts.compose_system,
                 Template(prompts.compose_user).substitute(
-                    input.input.model_dump(), research_result=input.result
+                    input.model_dump(), research_result=research_output.result
                 ),
             ],
         )
@@ -100,18 +98,13 @@ async def compose(_: EmptyModel, ctx: Context) -> PodcastComposeResult:
         session.add(podcast)
         await session.commit()
 
-    return PodcastComposeResult(
-        id=input.id,
-        input=input.input,
-        result=result.text,
-        usage=result.usage_metadata.model_dump(),
-    )
+    return PodcastComposeResult(result=result.text, usage=result.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
-async def voice(_: EmptyModel, ctx: Context):
-    # Get input
-    input = PodcastComposeResult.model_validate(ctx.task_output(compose))
+async def voice(input: PodcastTaskInput, ctx: Context):
+    # Get output
+    compose_output = PodcastComposeResult.model_validate(ctx.task_output(compose))
 
     # Update db status
     async with async_session() as session:
@@ -126,7 +119,7 @@ async def voice(_: EmptyModel, ctx: Context):
         # Generate audio
         result = await gemini_client.aio.models.generate_content(
             model=gemini_tts_model,
-            contents=input.result,
+            contents=compose_output.result,
             config=types.GenerateContentConfig(
                 temperature=1,
                 response_modalities=["audio"],
@@ -180,9 +173,7 @@ async def voice(_: EmptyModel, ctx: Context):
         session.add(podcast)
         await session.commit()
 
-    return PodcastVoiceResult(
-        id=input.id, input=input.input, result=name, usage=result.usage_metadata.model_dump()
-    )
+    return PodcastVoiceResult(result=name, usage=result.usage_metadata.model_dump())
 
 
 @podcast_generation.on_failure_task()
@@ -195,7 +186,7 @@ async def on_failure(input: PodcastTaskInput, ctx: Context):
         session.add(podcast)
         await session.commit()
 
-    return PodcastTaskFailure(input=input, error=ctx.task_run_errors)
+    return PodcastTaskFailure(error=ctx.task_run_errors)
 
 
 def process_audio(data: bytes) -> Tuple[BytesIO, int, int]:

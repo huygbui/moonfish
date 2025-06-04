@@ -121,36 +121,20 @@ class PodcastTaskInput(PodcastCreate):
     id: int
 
 
+class PodcastResearchResult(SQLModel):
+    result: str
+    usage: dict[str, Any]
+
+
+class PodcastComposeResult(SQLModel):
+    result: str
+    usage: dict[str, Any]
+
+
+class PodcastVoiceResult(SQLModel):
+    result: str
+    usage: dict[str, Any]
+
+
 class PodcastTaskFailure(SQLModel):
-    input: PodcastTaskInput
     error: dict[str, str]
-
-
-class PodcastResearch(SQLModel):
-    result: str
-
-
-class PodcastResearchResult(PodcastResearch):
-    id: int
-    input: PodcastTaskInput
-    usage: dict[str, Any]
-
-
-class PodcastCompose(SQLModel):
-    result: str
-
-
-class PodcastComposeResult(PodcastCompose):
-    id: int
-    input: PodcastTaskInput
-    usage: dict[str, Any]
-
-
-class PodcastVoice(SQLModel):
-    result: str
-
-
-class PodcastVoiceResult(PodcastVoice):
-    id: int
-    input: PodcastTaskInput
-    usage: dict[str, Any]
