@@ -42,7 +42,6 @@ minio_bucket = settings.minio_bucket
 
 @podcast_generation.task()
 async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResult:
-    raise Exception("ERROR")
     # Update db status
     async with async_session() as session:
         podcast = await session.get(Podcast, input.id)
@@ -66,7 +65,7 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
         )
 
     return PodcastResearchResult(
-        id=input.id, input=input, result=result.text, usage=str(result.usage_metadata.model_dump())
+        id=input.id, input=input, result=result.text, usage=result.usage_metadata.model_dump()
     )
 
 
@@ -105,7 +104,7 @@ async def compose(_: EmptyModel, ctx: Context) -> PodcastComposeResult:
         id=input.id,
         input=input.input,
         result=result.text,
-        usage=str(result.usage_metadata.model_dump()),
+        usage=result.usage_metadata.model_dump(),
     )
 
 
@@ -182,7 +181,7 @@ async def voice(_: EmptyModel, ctx: Context):
         await session.commit()
 
     return PodcastVoiceResult(
-        id=input.id, input=input.input, result=name, usage=str(result.usage_metadata.model_dump())
+        id=input.id, input=input.input, result=name, usage=result.usage_metadata.model_dump()
     )
 
 

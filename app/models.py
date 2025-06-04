@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import AnyUrl, EmailStr
 from sqlmodel import Field, Relationship, SQLModel
@@ -133,7 +133,7 @@ class PodcastResearch(SQLModel):
 class PodcastResearchResult(PodcastResearch):
     id: int
     input: PodcastTaskInput
-    usage: str
+    usage: dict[str, Any]
 
 
 class PodcastCompose(SQLModel):
@@ -143,7 +143,7 @@ class PodcastCompose(SQLModel):
 class PodcastComposeResult(PodcastCompose):
     id: int
     input: PodcastTaskInput
-    usage: str
+    usage: dict[str, Any]
 
 
 class PodcastVoice(SQLModel):
@@ -153,4 +153,4 @@ class PodcastVoice(SQLModel):
 class PodcastVoiceResult(PodcastVoice):
     id: int
     input: PodcastTaskInput
-    usage: str
+    usage: dict[str, Any]
