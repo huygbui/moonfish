@@ -40,7 +40,6 @@ class PodcastBase(SQLModel):
     status: str = "pending"
     step: str | None = None
 
-    title: str | None = None
     audio_url: str | None = None
     duration: int | None = None
 
