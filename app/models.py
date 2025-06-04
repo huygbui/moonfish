@@ -40,9 +40,6 @@ class PodcastBase(SQLModel):
     status: str = "pending"
     step: str | None = None
 
-    audio_url: str | None = None
-    duration: int | None = None
-
 
 class PodcastContentBase(SQLModel):
     title: str = Field(default="Untitled", sa_column_kwargs={"server_default": "Untitled"})
@@ -90,6 +87,7 @@ class Podcast(PodcastBase, table=True):
     user: User = Relationship(back_populates="podcasts")
 
     content: PodcastContent | None = Relationship(back_populates="podcast", cascade_delete=True)
+    audio: PodcastAudio | None = Relationship(back_populates="podcast", cascade_delete=True)
 
 
 class PodcastCreate(SQLModel):
