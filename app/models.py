@@ -49,7 +49,24 @@ class PodcastContentBase(SQLModel):
     transcript: str
 
 
+class PodcastAudioBase(SQLModel):
+    url: str
+    duration: int
+
+
 class PodcastContent(PodcastContentBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
+    )
+
+    podcast_id: int | None = Field(default=None, foreign_key="podcast.id", ondelete="CASCADE")
+    podcast: "Podcast" = Relationship(back_populates="content")
+
+
+class PodcastAudio(PodcastAudioBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(
