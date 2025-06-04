@@ -121,6 +121,11 @@ class PodcastTaskInput(PodcastCreate):
     id: int
 
 
+class PodcastTaskFailure(SQLModel):
+    input: PodcastTaskInput
+    error: dict[str, str]
+
+
 class PodcastResearch(SQLModel):
     result: str
 
