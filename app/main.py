@@ -9,8 +9,8 @@ from sqlmodel import select
 from .deps import SessionDep, UserDep
 from .models import (
     Podcast,
+    PodcastAudioResult,
     PodcastContent,
-    PodcastContentCreate,
     PodcastContentResult,
     PodcastCreate,
     PodcastResult,
@@ -85,14 +85,6 @@ async def get_podcasts(user: UserDep, session: SessionDep):
     return podcasts
 
 
-@app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
-async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
-    podcast = await session.get(Podcast, podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-    return podcast
-
-
 @app.put("/podcasts/{podcast_id}", response_model=PodcastResult)
 async def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, session: SessionDep):
     podcast = await session.get(Podcast, podcast_id)
@@ -103,6 +95,14 @@ async def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, ses
     session.add(podcast)
     await session.commit()
     await session.refresh(podcast)
+    return podcast
+
+
+@app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
+async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
+    podcast = await session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
     return podcast
 
 
@@ -118,22 +118,7 @@ async def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDe
     return content
 
 
-@app.post("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
-async def create_podcast_content(
-    req: PodcastContentCreate, podcast_id: int, user: UserDep, session: SessionDep
-):
-    podcast = await session.get(Podcast, podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-    content = PodcastContent(transcript=req.transcript)
-    podcast.content = content
-    session.add(podcast)
-    await session.commit()
-    await session.refresh(content)
-    return content
-
-
-@app.get("/podcasts/{podcast_id}/audio")
+@app.get("/podcasts/{podcast_id}/audio", response_model=PodcastAudioResult)
 def get_podcast_audio(podcast_id: int, user: UserDep):
     try:
         object_name = f"{podcast_id}.mp3"
@@ -145,7 +130,7 @@ def get_podcast_audio(podcast_id: int, user: UserDep):
             object_name=object_name,
             expires=timedelta(hours=1),  # 1 hour expiration
         )
-        return url
+        return PodcastAudioResult(url=url)
 
     except S3Error as e:
         if e.code == "NoSuchKey":

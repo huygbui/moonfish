@@ -15,6 +15,7 @@ from .config import settings
 from .database import async_session
 from .models import (
     Podcast,
+    PodcastAudio,
     PodcastComposeResponse,
     PodcastComposeResult,
     PodcastContent,
@@ -101,8 +102,7 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
         result = PodcastComposeResponse.model_validate_json(response.text)
 
         # Update db transcript
-        podcast.title = result.title
-        podcast.content = PodcastContent(transcript=result.script)
+        podcast.content = PodcastContent(title=result.title, transcript=result.script)
         session.add(podcast)
         await session.commit()
 
@@ -176,8 +176,7 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         # Update db status
         podcast.step = None
         podcast.status = "completed"
-        podcast.audio_url = name
-        podcast.duration = duration
+        podcast.audio = PodcastAudio(url=name, duration=duration)
         session.add(podcast)
         await session.commit()
 

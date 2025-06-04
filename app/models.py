@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import AnyUrl, EmailStr
+from pydantic import EmailStr
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -72,7 +72,7 @@ class PodcastAudio(PodcastAudioBase, table=True):
     )
 
     podcast_id: int | None = Field(default=None, foreign_key="podcast.id", ondelete="CASCADE")
-    podcast: "Podcast" = Relationship(back_populates="content")
+    podcast: "Podcast" = Relationship(back_populates="audio")
 
 
 class Podcast(PodcastBase, table=True):
@@ -99,37 +99,25 @@ class PodcastCreate(SQLModel):
     instruction: str | None = None
 
 
+class PodcastUpdate(SQLModel):
+    status: Literal["pending", "active", "completed", "cancelled"] | None = None
+    step: Literal["research", "compose", "voice"] | None = None
+
+
 class PodcastResult(PodcastBase):
     id: int
     created_at: datetime
     updated_at: datetime
 
 
-class PodcastUpdate(SQLModel):
-    status: Literal["pending", "active", "completed", "cancelled"] | None = None
-    step: Literal["research", "compose", "voice"] | None = None
-
-    title: str | None = None
-    audio_url: AnyUrl | None = None
-    duration: int | None = None
-
-
-class PodcastUpdateData(SQLModel):
-    status: str | None = None
-    step: str
-    title: str
-    audio_url: str
-    duration: int
-
-
-class PodcastContentCreate(PodcastContentBase):
-    pass
-
-
 class PodcastContentResult(PodcastContentBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class PodcastAudioResult(SQLModel):
+    url: str
 
 
 # Workflows
