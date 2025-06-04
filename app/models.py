@@ -109,6 +109,10 @@ class PodcastResult(PodcastBase):
     created_at: datetime
     updated_at: datetime
 
+    title: str | None = None
+    url: str | None = None
+    duration: int | None = None
+
 
 class PodcastContentResult(PodcastContentBase):
     id: int

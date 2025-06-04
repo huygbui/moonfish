@@ -4,6 +4,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import joinedload
 from sqlmodel import select
 
 from .deps import SessionDep, UserDep
@@ -80,9 +81,25 @@ async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep)
 
 @app.get("/podcasts/", response_model=list[PodcastResult])
 async def get_podcasts(user: UserDep, session: SessionDep):
-    result = await session.execute(select(Podcast).where(Podcast.user_id == user.id))
-    podcasts = result.scalars().all()
-    return podcasts
+    stmt = (
+        select(Podcast)
+        .where(Podcast.user_id == user.id)
+        .options(
+            joinedload(Podcast.audio),
+            joinedload(Podcast.content),
+        )
+    )
+    result = await session.execute(stmt)
+    podcasts = result.scalars().unique().all()
+    return [
+        PodcastResult(
+            **podcast.model_dump(),
+            title=podcast.content.title if podcast.content else None,
+            url=podcast.audio.url if podcast.audio else None,
+            duration=podcast.audio.duration if podcast.audio else None,
+        )
+        for podcast in podcasts
+    ]
 
 
 @app.put("/podcasts/{podcast_id}", response_model=PodcastResult)
@@ -100,10 +117,25 @@ async def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, ses
 
 @app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
 async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
-    podcast = await session.get(Podcast, podcast_id)
+    stmt = (
+        select(Podcast)
+        .where(Podcast.id == podcast_id)
+        .where(Podcast.user_id == user.id)
+        .options(joinedload(Podcast.audio), joinedload(Podcast.content))
+    )
+
+    result = await session.execute(stmt)
+    podcast = result.unique().scalars().one_or_none()
+
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
-    return podcast
+
+    return PodcastResult(
+        **podcast.model_dump(),
+        title=podcast.content.title if podcast.content else None,
+        url=podcast.audio.url if podcast.audio else None,
+        duration=podcast.audio.duration if podcast.audio else None,
+    )
 
 
 @app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
