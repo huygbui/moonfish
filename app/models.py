@@ -1,22 +1,137 @@
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
-from pydantic import EmailStr
-from sqlmodel import Field, Relationship, SQLModel
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+# Tables
+class Base(DeclarativeBase):
+    def to_dict(self) -> dict[str, Any]:
+        return {c.key: getattr(self, c.key) for c in inspect(self).mapper.column_attrs}
+
+    def update(self, data_dict, exclude=None):
+        exclude = set(exclude) if exclude else set()
+        valid_keys = {c.key for c in inspect(self).mapper.column_attrs}
+
+        for key, value in data_dict.items():
+            if key in valid_keys and key not in exclude:
+                setattr(self, key, value)
+
+
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String, unique=True)
+    first_name: Mapped[str] = mapped_column(String)
+    last_name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+
+    podcasts: Mapped[list["Podcast"]] = relationship(
+        "Podcast", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class PodcastContent(Base):
+    __tablename__ = "podcast_content"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String, default="Untitled", server_default="Untitled")
+    transcript: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    podcast_id: Mapped[int] = mapped_column(
+        ForeignKey("podcast.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    podcast: Mapped["Podcast"] = relationship("Podcast", back_populates="content")
+
+
+class PodcastAudio(Base):
+    __tablename__ = "podcast_audio"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    url: Mapped[str] = mapped_column(String)
+    duration: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    podcast_id: Mapped[int] = mapped_column(
+        ForeignKey("podcast.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    podcast: Mapped["Podcast"] = relationship("Podcast", back_populates="audio")
+
+
+class Podcast(Base):
+    __tablename__ = "podcast"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    topic: Mapped[str] = mapped_column(String)
+    length: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum for fixed choices
+    level: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
+    format: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
+    voice: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
+    instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")  # Consider sqlalchemy.Enum
+    step: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Consider sqlalchemy.Enum
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="podcasts")
+
+    content: Mapped[Optional["PodcastContent"]] = relationship(
+        "PodcastContent",
+        back_populates="podcast",
+        cascade="all, delete-orphan",  # Delete content when podcast is deleted
+    )
+    audio: Mapped[Optional["PodcastAudio"]] = relationship(
+        "PodcastAudio",
+        back_populates="podcast",
+        cascade="all, delete-orphan",  # Delete audio when podcast is deleted
+    )
 
 
 # User
-class UserBase(SQLModel):
+class UserBase(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
-
-
-class User(UserBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
-    podcasts: list["Podcast"] = Relationship(back_populates="user")
 
 
 class UserCreate(UserBase):
@@ -29,68 +144,7 @@ class UserResult(UserBase):
 
 
 # Podcast
-class PodcastBase(SQLModel):
-    topic: str
-    length: str
-    level: str
-    format: str
-    voice: str
-    instruction: str | None = None
-
-    status: str = "pending"
-    step: str | None = None
-
-
-class PodcastContentBase(SQLModel):
-    title: str = Field(default="Untitled", sa_column_kwargs={"server_default": "Untitled"})
-    transcript: str
-
-
-class PodcastAudioBase(SQLModel):
-    url: str
-    duration: int
-
-
-class PodcastContent(PodcastContentBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
-    )
-
-    podcast_id: int | None = Field(default=None, foreign_key="podcast.id", ondelete="CASCADE")
-    podcast: "Podcast" = Relationship(back_populates="content")
-
-
-class PodcastAudio(PodcastAudioBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
-    )
-
-    podcast_id: int | None = Field(default=None, foreign_key="podcast.id", ondelete="CASCADE")
-    podcast: "Podcast" = Relationship(back_populates="audio")
-
-
-class Podcast(PodcastBase, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC),
-        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
-    )
-
-    user_id: int | None = Field(default=None, foreign_key="user.id")
-    user: User = Relationship(back_populates="podcasts")
-
-    content: PodcastContent | None = Relationship(back_populates="podcast", cascade_delete=True)
-    audio: PodcastAudio | None = Relationship(back_populates="podcast", cascade_delete=True)
-
-
-class PodcastCreate(SQLModel):
+class PodcastCreate(BaseModel):
     topic: str
     length: Literal["short", "medium", "long"]
     level: Literal["beginner", "intermediate", "advanced"]
@@ -99,13 +153,18 @@ class PodcastCreate(SQLModel):
     instruction: str | None = None
 
 
-class PodcastUpdate(SQLModel):
+class PodcastResult(BaseModel):
+    id: int
+
+    topic: str
+    length: Literal["short", "medium", "long"]
+    level: Literal["beginner", "intermediate", "advanced"]
+    format: Literal["narrative", "conversational"]
+    voice: Literal["male", "female"]
+    instruction: str | None = None
     status: Literal["pending", "active", "completed", "cancelled"] | None = None
     step: Literal["research", "compose", "voice"] | None = None
 
-
-class PodcastResult(PodcastBase):
-    id: int
     created_at: datetime
     updated_at: datetime
 
@@ -114,13 +173,17 @@ class PodcastResult(PodcastBase):
     duration: int | None = None
 
 
-class PodcastContentResult(PodcastContentBase):
+class PodcastContentResult(BaseModel):
     id: int
+
+    title: str = "Untitled"
+    transcript: str
+
     created_at: datetime
     updated_at: datetime
 
 
-class PodcastAudioResult(SQLModel):
+class PodcastAudioResult(BaseModel):
     url: str
 
 
@@ -129,25 +192,25 @@ class PodcastTaskInput(PodcastCreate):
     id: int
 
 
-class PodcastResearchResult(SQLModel):
+class PodcastResearchResult(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
-class PodcastComposeResult(SQLModel):
+class PodcastComposeResult(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
-class PodcastComposeResponse(SQLModel):
+class PodcastComposeResponse(BaseModel):
     title: str
     script: str
 
 
-class PodcastVoiceResult(SQLModel):
+class PodcastVoiceResult(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
-class PodcastTaskFailure(SQLModel):
+class PodcastTaskFailure(BaseModel):
     error: dict[str, str]

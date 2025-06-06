@@ -2,10 +2,10 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import exists, select
 from sqlalchemy.orm import joinedload
-from sqlmodel import select
 
 from .deps import SessionDep, UserDep
 from .models import (
@@ -16,7 +16,6 @@ from .models import (
     PodcastCreate,
     PodcastResult,
     PodcastTaskInput,
-    PodcastUpdate,
     User,
     UserCreate,
     UserResult,
@@ -45,7 +44,7 @@ app.add_middleware(
 
 @app.post("/users/", response_model=UserResult)
 async def create_user(req: UserCreate, session: SessionDep):
-    user = User.model_validate(req)
+    user = User(**req.model_dump())
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -93,7 +92,7 @@ async def get_podcasts(user: UserDep, session: SessionDep):
     podcasts = result.scalars().unique().all()
     return [
         PodcastResult(
-            **podcast.model_dump(),
+            **podcast.to_dict(),
             title=podcast.content.title if podcast.content else None,
             url=podcast.audio.url if podcast.audio else None,
             duration=podcast.audio.duration if podcast.audio else None,
@@ -102,17 +101,19 @@ async def get_podcasts(user: UserDep, session: SessionDep):
     ]
 
 
-@app.put("/podcasts/{podcast_id}", response_model=PodcastResult)
-async def update_podcast(req: PodcastUpdate, podcast_id: int, user: UserDep, session: SessionDep):
+@app.delete("/podcasts/{podcast_id}")
+async def delete_podcast(podcast_id: int, user: UserDep, session: SessionDep):
     podcast = await session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
-    data = req.model_dump(exclude_unset=True, mode="json")
-    podcast.sqlmodel_update(data)
-    session.add(podcast)
+
+    if podcast.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    await session.delete(podcast)
     await session.commit()
-    await session.refresh(podcast)
-    return podcast
+
+    return Response(status_code=204)
 
 
 @app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
@@ -131,7 +132,7 @@ async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
         raise HTTPException(status_code=404, detail="Podcast not found")
 
     return PodcastResult(
-        **podcast.model_dump(),
+        **podcast.to_dict(),
         title=podcast.content.title if podcast.content else None,
         url=podcast.audio.url if podcast.audio else None,
         duration=podcast.audio.duration if podcast.audio else None,
@@ -140,10 +141,16 @@ async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
 
 @app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
 async def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDep):
-    result = await session.execute(
-        select(PodcastContent).where(PodcastContent.podcast_id == podcast_id)
+    stmt = (
+        select(PodcastContent)
+        .join(PodcastContent.podcast)
+        .where(PodcastContent.podcast_id == podcast_id)
+        .where(Podcast.user_id == user.id)
     )
-    content = result.scalars().one_or_none()
+
+    result = await session.execute(stmt)
+    content = result.scalar_one_or_none()
+
     if not content:
         raise HTTPException(status_code=404, detail="Podcast content not found")
 
@@ -151,7 +158,14 @@ async def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDe
 
 
 @app.get("/podcasts/{podcast_id}/audio", response_model=PodcastAudioResult)
-def get_podcast_audio(podcast_id: int, user: UserDep):
+async def get_podcast_audio(podcast_id: int, user: UserDep, session: SessionDep):
+    stmt = select(exists().where(Podcast.id == podcast_id).where(Podcast.user_id == user.id))
+    result = await session.execute(stmt)
+    podcast_exists = result.scalars()
+
+    if not podcast_exists:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
     try:
         object_name = f"{podcast_id}.mp3"
         stat = minio_client.stat_object(minio_bucket, object_name)
