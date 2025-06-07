@@ -44,8 +44,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True)
-    first_name: Mapped[str] = mapped_column(String)
-    last_name: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
@@ -148,8 +147,7 @@ class Podcast(Base):
 # User
 class UserBase(BaseModel):
     email: EmailStr
-    first_name: str
-    last_name: str
+    name: str
 
 
 class UserCreate(UserBase):

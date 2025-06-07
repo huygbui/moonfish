@@ -18,12 +18,12 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-length_enum = sa.enum("short", "medium", "long", name="length")
-level_enum = sa.enum("beginner", "intermediate", "advanced", name="level")
-format_enum = sa.enum("narrative", "conversational", name="format")
-voice_enum = sa.enum("male", "female", name="voice")
-status_enum = sa.enum("pending", "active", "completed", "cancelled", name="status")
-step_enum = sa.enum("research", "compose", "voice", name="step")
+length_enum = sa.Enum("short", "medium", "long", name="length")
+level_enum = sa.Enum("beginner", "intermediate", "advanced", name="level")
+format_enum = sa.Enum("narrative", "conversational", name="format")
+voice_enum = sa.Enum("male", "female", name="voice")
+status_enum = sa.Enum("pending", "active", "completed", "cancelled", name="status")
+step_enum = sa.Enum("research", "compose", "voice", name="step")
 
 
 def upgrade() -> None:
