@@ -8,9 +8,11 @@ from google.genai import types
 from hatchet_sdk import Context, Hatchet
 from pydub import AudioSegment
 
-from . import prompts, tools
-from .database import async_session
-from .models import (
+from app import prompts, tools
+from app.core.database import async_session
+from app.core.services import gemini_client, gemini_model, gemini_tts_model
+from app.core.storage import Minio, minio_bucket, minio_client
+from app.models import (
     Podcast,
     PodcastAudio,
     PodcastComposeResponse,
@@ -21,8 +23,6 @@ from .models import (
     PodcastTaskInput,
     PodcastVoiceResult,
 )
-from .services import gemini_client, gemini_model, gemini_tts_model
-from .storage import Minio, minio_bucket, minio_client
 
 hatchet = Hatchet(debug=True)
 

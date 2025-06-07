@@ -3,9 +3,9 @@ from typing import Annotated, AsyncGenerator
 from fastapi import Depends, HTTPException, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import async_session
-from .models import User
-from .security import api_key_header, verify_api_key
+from app.core.database import async_session
+from app.core.security import api_key_header, verify_api_key
+from app.models import User
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:

@@ -1,7 +1,7 @@
 from exa_py import AsyncExa
 from google import genai
 
-from app.config import settings
+from app.core.config import settings
 
 exa_client = AsyncExa(settings.exa_api_key)
 
