@@ -4,13 +4,13 @@ from io import BytesIO
 from string import Template
 from typing import Tuple
 
+from google import genai
 from google.genai import types
-from hatchet_sdk import Context, Hatchet
+from hatchet_sdk import Context
 from pydub import AudioSegment
 
-from app import prompts, tools
+from app.core.config import settings
 from app.core.database import async_session
-from app.core.services import gemini_client, gemini_model, gemini_tts_model
 from app.core.storage import Minio, minio_bucket, minio_client
 from app.models import (
     Podcast,
@@ -23,10 +23,15 @@ from app.models import (
     PodcastTaskInput,
     PodcastVoiceResult,
 )
-
-hatchet = Hatchet(debug=True)
+from app.worker import prompts, tools
+from app.worker.hatchet_client import hatchet
 
 podcast_generation = hatchet.workflow(name="PodcastGeneration")
+
+
+gemini_client = genai.Client(api_key=settings.gemini_api_key)
+gemini_model = settings.gemini_model
+gemini_tts_model = settings.gemini_tts_model
 
 
 @podcast_generation.task()

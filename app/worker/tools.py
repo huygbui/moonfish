@@ -1,6 +1,9 @@
+from exa_py import AsyncExa
 from exa_py.api import ResultWithText, SearchResponse
 
-from app.core.services import exa_client
+from app.core.config import settings
+
+exa_client = AsyncExa(settings.exa_api_key)
 
 
 async def web_search(

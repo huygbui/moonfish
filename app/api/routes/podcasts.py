@@ -15,7 +15,7 @@ from app.models import (
     PodcastResult,
     PodcastTaskInput,
 )
-from app.workflows import podcast_generation
+from app.worker.workflows import podcast_generation
 
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
