@@ -1,10 +1,11 @@
 from typing import Annotated, AsyncGenerator
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import async_session
 from .models import User
+from .security import api_key_header, verify_api_key
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -12,10 +13,10 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+SessionCurrent = Annotated[AsyncSession, Depends(get_session)]
 
 
-async def get_user(session: SessionDep) -> User:
+async def get_user(session: SessionCurrent) -> User:
     # TODO: Update to use Token instead of hardcoding
     user = await session.get(User, 1)
     if not user:
@@ -23,4 +24,14 @@ async def get_user(session: SessionDep) -> User:
     return user
 
 
-UserDep = Annotated[User, Depends(get_user)]
+UserCurrent = Annotated[User, Depends(get_user)]
+
+
+def get_api_key(key: str = Security(api_key_header)):
+    if verify_api_key(key):
+        return key
+    else:
+        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
+
+
+APIKeyDep = Depends(get_api_key)

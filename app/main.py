@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import exists, select
 from sqlalchemy.orm import joinedload
 
-from .deps import SessionDep, UserDep
+from .deps import APIKeyDep, SessionCurrent, UserCurrent
 from .models import (
     Podcast,
     PodcastAudioResult,
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="moonfish", lifespan=lifespan)
+app = FastAPI(title="moonfish", lifespan=lifespan, dependencies=[APIKeyDep])
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,7 +43,7 @@ app.add_middleware(
 
 
 @app.post("/users/", response_model=UserResult)
-async def create_user(req: UserCreate, session: SessionDep):
+async def create_user(req: UserCreate, session: SessionCurrent):
     user = User(**req.model_dump())
     session.add(user)
     await session.commit()
@@ -52,14 +52,14 @@ async def create_user(req: UserCreate, session: SessionDep):
 
 
 @app.get("/users/", response_model=list[UserResult])
-async def get_users(session: SessionDep):
+async def get_users(session: SessionCurrent):
     result = await session.execute(select(User))
     users = result.scalars().all()
     return users
 
 
 @app.post("/podcasts/", response_model=PodcastResult)
-async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep):
+async def create_podcast(req: PodcastCreate, user: UserCurrent, session: SessionCurrent):
     print(req.model_dump())
     podcast = Podcast(**req.model_dump(), user_id=user.id, user=user)
     session.add(podcast)
@@ -78,7 +78,7 @@ async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep)
 
 
 @app.get("/podcasts/", response_model=list[PodcastResult])
-async def get_podcasts(user: UserDep, session: SessionDep):
+async def get_podcasts(user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(Podcast)
         .where(Podcast.user_id == user.id)
@@ -101,7 +101,7 @@ async def get_podcasts(user: UserDep, session: SessionDep):
 
 
 @app.delete("/podcasts/{podcast_id}")
-async def delete_podcast(podcast_id: int, user: UserDep, session: SessionDep):
+async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     podcast = await session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
@@ -126,7 +126,7 @@ async def delete_podcast(podcast_id: int, user: UserDep, session: SessionDep):
 
 
 @app.get("/podcasts/{podcast_id}", response_model=PodcastResult)
-async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
+async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(Podcast)
         .where(Podcast.id == podcast_id)
@@ -149,7 +149,7 @@ async def get_podcast(podcast_id: int, user: UserDep, session: SessionDep):
 
 
 @app.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
-async def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDep):
+async def get_podcast_content(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(PodcastContent)
         .join(PodcastContent.podcast)
@@ -167,7 +167,7 @@ async def get_podcast_content(podcast_id: int, user: UserDep, session: SessionDe
 
 
 @app.get("/podcasts/{podcast_id}/audio", response_model=PodcastAudioResult)
-async def get_podcast_audio(podcast_id: int, user: UserDep, session: SessionDep):
+async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = select(exists().where(Podcast.id == podcast_id).where(Podcast.user_id == user.id))
     result = await session.execute(stmt)
     podcast_exists = result.scalars()

@@ -7,6 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    api_key: str
+    api_key_header_name: str
+
     gemini_api_key: str
     gemini_model: str
     gemini_tts_model: str
