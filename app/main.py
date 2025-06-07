@@ -60,6 +60,7 @@ async def get_users(session: SessionDep):
 
 @app.post("/podcasts/", response_model=PodcastResult)
 async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep):
+    print(req.model_dump())
     podcast = Podcast(**req.model_dump(), user_id=user.id, user=user)
     session.add(podcast)
     await session.commit()

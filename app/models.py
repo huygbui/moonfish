@@ -1,10 +1,19 @@
 from datetime import UTC, datetime
 from typing import Any, Literal, Optional
 
+import sqlalchemy
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+# Types
+Length = Literal["short", "medium", "long"]
+Level = Literal["beginner", "intermediate", "advanced"]
+Format = Literal["narrative", "conversational"]
+Voice = Literal["male", "female"]
+Status = Literal["pending", "active", "completed", "cancelled"]
+Step = Literal["research", "compose", "voice"]
 
 
 # Tables
@@ -19,6 +28,15 @@ class Base(DeclarativeBase):
         for key, value in data_dict.items():
             if key in valid_keys and key not in exclude:
                 setattr(self, key, value)
+
+    type_annotation_map = {
+        Length: sqlalchemy.Enum("short", "medium", "long", name="length"),
+        Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
+        Format: sqlalchemy.Enum("narrative", "conversational", name="format"),
+        Voice: sqlalchemy.Enum("male", "female", name="voice"),
+        Status: sqlalchemy.Enum("pending", "active", "completed", "cancelled", name="status"),
+        Step: sqlalchemy.Enum("research", "compose", "voice", name="step"),
+    }
 
 
 class User(Base):
@@ -90,13 +108,13 @@ class Podcast(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     topic: Mapped[str] = mapped_column(String)
-    length: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum for fixed choices
-    level: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
-    format: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
-    voice: Mapped[str] = mapped_column(String)  # Consider sqlalchemy.Enum
+    length: Mapped[Length]
+    level: Mapped[Level]
+    format: Mapped[Format]
+    voice: Mapped[Voice]
     instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String, default="pending")  # Consider sqlalchemy.Enum
-    step: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # Consider sqlalchemy.Enum
+    status: Mapped[Status] = mapped_column(default="pending")
+    step: Mapped[Optional[Step]] = mapped_column(nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
@@ -146,10 +164,10 @@ class UserResult(UserBase):
 # Podcast
 class PodcastCreate(BaseModel):
     topic: str
-    length: Literal["short", "medium", "long"]
-    level: Literal["beginner", "intermediate", "advanced"]
-    format: Literal["narrative", "conversational"]
-    voice: Literal["male", "female"]
+    length: Length
+    level: Level
+    format: Format
+    voice: Voice
     instruction: str | None = None
 
 
@@ -157,13 +175,13 @@ class PodcastResult(BaseModel):
     id: int
 
     topic: str
-    length: Literal["short", "medium", "long"]
-    level: Literal["beginner", "intermediate", "advanced"]
-    format: Literal["narrative", "conversational"]
-    voice: Literal["male", "female"]
+    length: Length
+    level: Level
+    format: Format
+    voice: Voice
     instruction: str | None = None
-    status: Literal["pending", "active", "completed", "cancelled"] | None = None
-    step: Literal["research", "compose", "voice"] | None = None
+    status: Status | None = None
+    step: Step | None = None
 
     created_at: datetime
     updated_at: datetime
