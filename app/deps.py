@@ -18,7 +18,7 @@ SessionCurrent = Annotated[AsyncSession, Depends(get_session)]
 
 async def get_user(session: SessionCurrent) -> User:
     # TODO: Update to use Token instead of hardcoding
-    user = await session.get(User, 1)
+    user = await session.get(User, 2)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
