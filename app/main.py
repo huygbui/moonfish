@@ -60,14 +60,12 @@ async def get_users(session: SessionDep):
 
 @app.post("/podcasts/", response_model=PodcastResult)
 async def create_podcast(req: PodcastCreate, user: UserDep, session: SessionDep):
-    podcast = Podcast.model_validate(req)
-    podcast.user_id = user.id
-    podcast.user = user
+    podcast = Podcast(**req.model_dump(), user_id=user.id, user=user)
     session.add(podcast)
     await session.commit()
     await session.refresh(podcast)
 
-    task = PodcastTaskInput.model_validate(podcast)
+    task = PodcastTaskInput.model_validate(podcast.to_dict())
     run_id = podcast_generation.run_no_wait(task)
 
     # podcast.run_id = run_id
@@ -109,6 +107,16 @@ async def delete_podcast(podcast_id: int, user: UserDep, session: SessionDep):
 
     if podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
+
+    try:
+        minio_client.remove_object(minio_bucket, f"{podcast_id}.mp3")
+    except S3Error as e:
+        if e.code == "NoSuchKey":
+            pass
+        else:
+            raise HTTPException(
+                status_code=500, detail="Could not delete podcast audio. Please try again."
+            )
 
     await session.delete(podcast)
     await session.commit()
