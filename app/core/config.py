@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     api_key: str
     api_key_header_name: str
 
-    database_url: PostgresDsn | None = None
+    database_url: str | None = None
 
     gemini_api_key: str
     gemini_model: str
