@@ -1,6 +1,7 @@
 from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, HTTPException, Security
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session
@@ -18,7 +19,9 @@ SessionCurrent = Annotated[AsyncSession, Depends(get_session)]
 
 async def get_user(session: SessionCurrent) -> User:
     # TODO: Update to use Token instead of hardcoding
-    user = await session.get(User, 2)
+    stmt = select(User).where(User.email == "user@example.com")
+    result = await session.execute(stmt)
+    user = result.scalars().one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
