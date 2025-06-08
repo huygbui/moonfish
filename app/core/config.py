@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_url(self) -> PostgresDsn:
         if self.database_url:
-            return self.database_url
+            # Ensure the async driver is used.
+            return self.database_url.replace("postgresql://", "postgresql+psycopg://")
 
         # Fallback during local development
         return MultiHostUrl.build(
