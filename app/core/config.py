@@ -10,27 +10,33 @@ class Settings(BaseSettings):
     api_key: str
     api_key_header_name: str
 
+    database_url: PostgresDsn | None = None
+
     gemini_api_key: str
     gemini_model: str
     gemini_tts_model: str
 
     exa_api_key: str
 
-    postgres_password: str
-    postgres_user: str
-    postgres_db: str
-    postgres_server: str
-    postgres_port: int
+    # Local development only
+    postgres_password: str | None = None
+    postgres_user: str | None = None
+    postgres_db: str | None = None
+    postgres_server: str | None = None
+    postgres_port: int | None = None
 
     minio_access_key: str
     minio_secret_key: str
     minio_bucket: str
     minio_server: str
-    minio_port: int
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sqlalchemy_url(self) -> PostgresDsn:
+        if self.database_url:
+            return self.database_url
+
+        # Fallback during local development
         return MultiHostUrl.build(
             scheme="postgresql+psycopg",
             username=self.postgres_user,
