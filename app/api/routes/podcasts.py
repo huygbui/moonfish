@@ -21,20 +21,18 @@ router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
 
 @router.post("/podcasts/", response_model=PodcastResult)
-async def create_podcast(req: PodcastCreate, user: UserCurrent, session: SessionCurrent):
-    print(req.model_dump())
+async def create_podcast(
+    req: PodcastCreate,
+    user: UserCurrent,
+    session: SessionCurrent,
+):
     podcast = Podcast(**req.model_dump(), user_id=user.id, user=user)
     session.add(podcast)
     await session.commit()
     await session.refresh(podcast)
 
     task = PodcastTaskInput.model_validate(podcast.to_dict())
-    run_id = podcast_generation.run_no_wait(task)
-
-    # podcast.run_id = run_id
-    # session.add(podcast)
-    # await session.commit()
-    # await session.refresh(podcast)
+    _ = await podcast_generation.aio_run_no_wait(task)
 
     return podcast
 
