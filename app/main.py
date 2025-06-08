@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.deps import APIKeyDep
 from app.api.main import api_router
 
 load_dotenv()
@@ -15,7 +14,13 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="moonfish", lifespan=lifespan, dependencies=[APIKeyDep])
+app = FastAPI(title="moonfish", lifespan=lifespan)
+
+
+@app.get("/health", tags=["Health"])
+def check_heath() -> dict[str, str]:
+    return {"status": "ok"}
+
 
 app.add_middleware(
     CORSMiddleware,
