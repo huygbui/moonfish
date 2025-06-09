@@ -17,11 +17,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="moonfish", lifespan=lifespan)
 
 
-@app.get("/health", tags=["Health"])
-def check_heath() -> dict[str, str]:
-    return {"status": "ok"}
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
