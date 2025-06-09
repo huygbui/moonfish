@@ -1,4 +1,7 @@
+from typing import Literal
+
 from pydantic import (
+    HttpUrl,
     PostgresDsn,
     computed_field,
 )
@@ -7,6 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    environment: Literal["development", "production"] = "development"
+
     api_key: str
     api_key_header_name: str
 
@@ -29,6 +34,8 @@ class Settings(BaseSettings):
     minio_secret_key: str
     minio_bucket: str
     minio_server: str
+
+    sentry_dsn: HttpUrl | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
