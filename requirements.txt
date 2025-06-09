@@ -42,6 +42,7 @@ certifi==2025.4.26
     #   httpx
     #   minio
     #   requests
+    #   sentry-sdk
 cffi==1.17.1
     # via
     #   argon2-cffi-bindings
@@ -64,7 +65,9 @@ email-validator==2.2.0
 exa-py==1.14.5
     # via moonfish (pyproject.toml)
 fastapi==0.115.12
-    # via moonfish (pyproject.toml)
+    # via
+    #   moonfish (pyproject.toml)
+    #   sentry-sdk
 fastapi-cli==0.0.7
     # via fastapi
 frozenlist==1.6.2
@@ -214,6 +217,8 @@ rich-toolkit==0.14.7
     # via fastapi-cli
 rsa==4.9.1
     # via google-auth
+sentry-sdk==2.29.1
+    # via moonfish (pyproject.toml)
 setuptools==80.9.0
     # via grpcio-tools
 shellingham==1.5.4
@@ -268,6 +273,7 @@ urllib3==2.4.0
     #   hatchet-sdk
     #   minio
     #   requests
+    #   sentry-sdk
 uvicorn==0.34.3
     # via
     #   fastapi
