@@ -224,7 +224,7 @@ class PodcastComposeResponse(BaseModel):
 
 
 class PodcastVoiceResult(BaseModel):
-    result: str
+    result: dict[str, Any]
     usage: dict[str, Any]
 
 

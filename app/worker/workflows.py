@@ -114,69 +114,77 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         podcast.step = "voice"
         session.add(podcast)
         await session.commit()
-        await session.refresh(podcast)
 
-        # Generate audio
-        response = await gemini_client.aio.models.generate_content(
-            model=gemini_tts_model,
-            contents=compose_output.result,
-            config=types.GenerateContentConfig(
-                temperature=1,
-                response_modalities=["audio"],
-                speech_config=types.SpeechConfig(
-                    multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
-                        speaker_voice_configs=[
-                            types.SpeakerVoiceConfig(
-                                speaker="Speaker 1",
-                                voice_config=types.VoiceConfig(
-                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                        voice_name="Zephyr"
-                                    )
-                                ),
+    # Generate audio
+    response = await gemini_client.aio.models.generate_content(
+        model=gemini_tts_model,
+        contents=compose_output.result,
+        config=types.GenerateContentConfig(
+            temperature=1,
+            response_modalities=["audio"],
+            speech_config=types.SpeechConfig(
+                multi_speaker_voice_config=types.MultiSpeakerVoiceConfig(
+                    speaker_voice_configs=[
+                        types.SpeakerVoiceConfig(
+                            speaker="Speaker 1",
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Zephyr")
                             ),
-                            types.SpeakerVoiceConfig(
-                                speaker="Speaker 2",
-                                voice_config=types.VoiceConfig(
-                                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                        voice_name="Puck"
-                                    )
-                                ),
+                        ),
+                        types.SpeakerVoiceConfig(
+                            speaker="Speaker 2",
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Puck")
                             ),
-                        ]
-                    ),
+                        ),
+                    ]
                 ),
             ),
+        ),
+    )
+    data = response.candidates[0].content.parts[0].inline_data.data
+    name = f"{input.id}.mp3"
+
+    # Process and upload to minio
+    buffer, buffer_size, duration = await asyncio.to_thread(process_audio, data)
+    try:
+        await asyncio.to_thread(
+            upload_audio,
+            data=buffer,
+            length=buffer_size,
+            client=minio_client,
+            bucket_name=minio_bucket,
+            object_name=name,
         )
-        data = response.candidates[0].content.parts[0].inline_data.data
-        name = f"{input.id}.mp3"
+    finally:
+        buffer.close()
+        buffer = None
 
-        # Process and upload to minio
-        buffer, buffer_size, duration = await asyncio.to_thread(process_audio, data)
-        try:
-            await asyncio.to_thread(
-                upload_audio,
-                data=buffer,
-                length=buffer_size,
-                client=minio_client,
-                bucket_name=minio_bucket,
-                object_name=name,
-            )
-        finally:
-            buffer.close()
-            buffer = None
+    return PodcastVoiceResult(
+        result={"url": name, "duration": duration}, usage=response.usage_metadata.model_dump()
+    )
 
-        # Update db status
+
+@podcast_generation.on_success_task()
+async def handle_success(input: PodcastTaskInput, ctx: Context):
+    voice_output = PodcastVoiceResult.model_validate(ctx.task_output(voice))
+
+    # Update db status
+    async with async_session() as session:
+        podcast = await session.get(Podcast, input.id)
+        if not podcast:
+            raise Exception("Podcast not found")
         podcast.step = None
         podcast.status = "completed"
-        podcast.audio = PodcastAudio(url=name, duration=duration)
+        podcast.audio = PodcastAudio(
+            url=voice_output.result["url"], duration=voice_output.result["duration"]
+        )
         session.add(podcast)
         await session.commit()
 
-    return PodcastVoiceResult(result=name, usage=response.usage_metadata.model_dump())
-
 
 @podcast_generation.on_failure_task()
-async def on_failure(input: PodcastTaskInput, ctx: Context):
+async def handle_failure(input: PodcastTaskInput, ctx: Context):
     async with async_session() as session:
         podcast = await session.get(Podcast, input.id)
         if not podcast:

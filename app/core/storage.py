@@ -6,7 +6,7 @@ minio_client = Minio(
     settings.minio_server,
     access_key=settings.minio_access_key,
     secret_key=settings.minio_secret_key,
-    secure=True,
+    secure=True if settings.environment != "development" else False,
 )
 minio_bucket = settings.minio_bucket
 
