@@ -13,6 +13,7 @@ load_dotenv()
 if settings.sentry_dsn and settings.environment != "development":
     sentry_sdk.init(
         dsn=str(settings.sentry_dsn),
+        traces_sample_rate=settings.sentry_traces_sample_rate,
         environment=settings.environment,
     )
 

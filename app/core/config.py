@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     minio_server: str
 
     sentry_dsn: HttpUrl | None = None
+    sentry_traces_sample_rate: float | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
