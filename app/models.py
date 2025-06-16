@@ -83,7 +83,7 @@ class PodcastAudio(Base):
     __tablename__ = "podcast_audio"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    url: Mapped[str] = mapped_column(String)
+    file_name: Mapped[str] = mapped_column(String)
     duration: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
@@ -187,7 +187,7 @@ class PodcastResult(BaseModel):
 
     title: str | None = None
     summary: str | None = None
-    url: str | None = None
+    file_name: str | None = None
     duration: int | None = None
 
 

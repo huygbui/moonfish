@@ -55,7 +55,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent):
             **podcast.to_dict(),
             title=podcast.content.title if podcast.content else None,
             summary=podcast.content.summary if podcast.content else None,
-            url=podcast.audio.url if podcast.audio else None,
+            file_name=podcast.audio.file_name if podcast.audio else None,
             duration=podcast.audio.duration if podcast.audio else None,
         )
         for podcast in podcasts
@@ -106,7 +106,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
         **podcast.to_dict(),
         title=podcast.content.title if podcast.content else None,
         summary=podcast.content.summary if podcast.content else None,
-        url=podcast.audio.url if podcast.audio else None,
+        file_name=podcast.audio.file_name if podcast.audio else None,
         duration=podcast.audio.duration if podcast.audio else None,
     )
 
@@ -145,12 +145,12 @@ async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: Session
         raise HTTPException(status_code=404, detail="Podcast content not found")
 
     try:
-        stat = minio_client.stat_object(minio_bucket, audio.url)
+        stat = minio_client.stat_object(minio_bucket, audio.file_name)
 
         # Generate presigned URL valid for 1 hour
         url = minio_client.presigned_get_object(
             bucket_name=minio_bucket,
-            object_name=audio.url,
+            object_name=audio.file_name,
             expires=timedelta(hours=1),  # 1 hour expiration
         )
         return PodcastAudioResult(url=url, duration=audio.duration)
