@@ -20,7 +20,7 @@ from app.worker.workflows import podcast_generation
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
 
-@router.post("/podcasts/", response_model=PodcastResult)
+@router.post("/", response_model=PodcastResult)
 async def create_podcast(
     req: PodcastCreate,
     user: UserCurrent,
@@ -37,7 +37,7 @@ async def create_podcast(
     return podcast
 
 
-@router.get("/podcasts/", response_model=list[PodcastResult])
+@router.get("/", response_model=list[PodcastResult])
 async def get_podcasts(user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(Podcast)
@@ -61,7 +61,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent):
     ]
 
 
-@router.delete("/podcasts/{podcast_id}")
+@router.delete("/{podcast_id}")
 async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     podcast = await session.get(Podcast, podcast_id)
     if not podcast:
@@ -86,7 +86,7 @@ async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCur
     return Response(status_code=204)
 
 
-@router.get("/podcasts/{podcast_id}", response_model=PodcastResult)
+@router.get("/{podcast_id}", response_model=PodcastResult)
 async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(Podcast)
@@ -110,7 +110,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
     )
 
 
-@router.get("/podcasts/{podcast_id}/content", response_model=PodcastContentResult)
+@router.get("/{podcast_id}/content", response_model=PodcastContentResult)
 async def get_podcast_content(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(PodcastContent)
@@ -128,7 +128,7 @@ async def get_podcast_content(podcast_id: int, user: UserCurrent, session: Sessi
     return content
 
 
-@router.get("/podcasts/{podcast_id}/audio", response_model=PodcastAudioResult)
+@router.get("/{podcast_id}/audio", response_model=PodcastAudioResult)
 async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     stmt = select(exists().where(Podcast.id == podcast_id).where(Podcast.user_id == user.id))
     result = await session.execute(stmt)

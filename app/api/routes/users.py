@@ -7,14 +7,14 @@ from app.models import User, UserCreate, UserResult
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-@router.get("/users/", response_model=list[UserResult])
+@router.get("/", response_model=list[UserResult])
 async def get_users(session: SessionCurrent):
     result = await session.execute(select(User))
     users = result.scalars().all()
     return users
 
 
-@router.post("/users/", response_model=UserResult)
+@router.post("/", response_model=UserResult)
 async def create_user(req: UserCreate, session: SessionCurrent):
     user = User(**req.model_dump())
     session.add(user)
