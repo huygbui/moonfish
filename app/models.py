@@ -204,6 +204,7 @@ class PodcastContentResult(BaseModel):
 
 class PodcastAudioResult(BaseModel):
     url: str
+    duration: int
 
 
 # Workflows

@@ -8,6 +8,7 @@ from app.api.deps import SessionCurrent, UserCurrent
 from app.core.storage import S3Error, minio_bucket, minio_client
 from app.models import (
     Podcast,
+    PodcastAudio,
     PodcastAudioResult,
     PodcastContent,
     PodcastContentResult,
@@ -130,24 +131,29 @@ async def get_podcast_content(podcast_id: int, user: UserCurrent, session: Sessi
 
 @router.get("/{podcast_id}/audio", response_model=PodcastAudioResult)
 async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = select(exists().where(Podcast.id == podcast_id).where(Podcast.user_id == user.id))
-    result = await session.execute(stmt)
-    podcast_exists = result.scalars()
+    stmt = (
+        select(PodcastAudio)
+        .join(PodcastAudio.podcast)
+        .where(PodcastAudio.podcast_id == podcast_id)
+        .where(Podcast.user_id == user.id)
+    )
 
-    if not podcast_exists:
-        raise HTTPException(status_code=404, detail="Podcast not found")
+    result = await session.execute(stmt)
+    audio = result.scalar_one_or_none()
+
+    if not audio:
+        raise HTTPException(status_code=404, detail="Podcast content not found")
 
     try:
-        object_name = f"{podcast_id}.mp3"
-        stat = minio_client.stat_object(minio_bucket, object_name)
+        stat = minio_client.stat_object(minio_bucket, audio.url)
 
         # Generate presigned URL valid for 1 hour
         url = minio_client.presigned_get_object(
             bucket_name=minio_bucket,
-            object_name=object_name,
+            object_name=audio.url,
             expires=timedelta(hours=1),  # 1 hour expiration
         )
-        return PodcastAudioResult(url=url)
+        return PodcastAudioResult(url=url, duration=audio.duration)
 
     except S3Error as e:
         if e.code == "NoSuchKey":
