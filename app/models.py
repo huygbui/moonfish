@@ -58,7 +58,8 @@ class PodcastContent(Base):
     __tablename__ = "podcast_content"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    title: Mapped[str] = mapped_column(String, default="Untitled", server_default="Untitled")
+    title: Mapped[str] = mapped_column(String)
+    summary: Mapped[str] = mapped_column(Text)
     transcript: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
@@ -185,6 +186,7 @@ class PodcastResult(BaseModel):
     updated_at: datetime
 
     title: str | None = None
+    summary: str | None = None
     url: str | None = None
     duration: int | None = None
 
@@ -192,7 +194,8 @@ class PodcastResult(BaseModel):
 class PodcastContentResult(BaseModel):
     id: int
 
-    title: str = "Untitled"
+    title: str
+    summary: str
     transcript: str
 
     created_at: datetime

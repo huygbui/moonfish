@@ -1,8 +1,8 @@
-"""inital table create
+"""first init
 
-Revision ID: 7939989826ff
+Revision ID: 756ffc63f344
 Revises: 
-Create Date: 2025-06-06 23:27:05.298992
+Create Date: 2025-06-16 12:03:13.897003
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7939989826ff'
+revision: str = '756ffc63f344'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,8 +24,7 @@ def upgrade() -> None:
     op.create_table('user',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
-    sa.Column('first_name', sa.String(), nullable=False),
-    sa.Column('last_name', sa.String(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
@@ -33,13 +32,13 @@ def upgrade() -> None:
     op.create_table('podcast',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('topic', sa.String(), nullable=False),
-    sa.Column('length', sa.String(), nullable=False),
-    sa.Column('level', sa.String(), nullable=False),
-    sa.Column('format', sa.String(), nullable=False),
-    sa.Column('voice', sa.String(), nullable=False),
+    sa.Column('length', sa.Enum('short', 'medium', 'long', name='length'), nullable=False),
+    sa.Column('level', sa.Enum('beginner', 'intermediate', 'advanced', name='level'), nullable=False),
+    sa.Column('format', sa.Enum('narrative', 'conversational', name='format'), nullable=False),
+    sa.Column('voice', sa.Enum('male', 'female', name='voice'), nullable=False),
     sa.Column('instruction', sa.Text(), nullable=True),
-    sa.Column('status', sa.String(), nullable=False),
-    sa.Column('step', sa.String(), nullable=True),
+    sa.Column('status', sa.Enum('pending', 'active', 'completed', 'cancelled', name='status'), nullable=False),
+    sa.Column('step', sa.Enum('research', 'compose', 'voice', name='step'), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -60,7 +59,8 @@ def upgrade() -> None:
     op.create_index(op.f('ix_podcast_audio_podcast_id'), 'podcast_audio', ['podcast_id'], unique=False)
     op.create_table('podcast_content',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('title', sa.String(), server_default='Untitled', nullable=False),
+    sa.Column('title', sa.String(), nullable=False),
+    sa.Column('summary', sa.Text(), nullable=False),
     sa.Column('transcript', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
