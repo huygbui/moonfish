@@ -20,7 +20,7 @@ from app.worker.workflows import podcast_generation
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
 
-@router.post("/", response_model=PodcastResult)
+@router.post("", response_model=PodcastResult)
 async def create_podcast(
     req: PodcastCreate,
     user: UserCurrent,
@@ -37,7 +37,7 @@ async def create_podcast(
     return podcast
 
 
-@router.get("/", response_model=list[PodcastResult])
+@router.get("", response_model=list[PodcastResult])
 async def get_podcasts(user: UserCurrent, session: SessionCurrent):
     stmt = (
         select(Podcast)

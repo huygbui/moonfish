@@ -3,10 +3,10 @@ from sqlalchemy import select
 
 from app.api.deps import SessionCurrent
 
-router = APIRouter(tags=["Health"])
+router = APIRouter(prefix="/health", tags=["Health"])
 
 
-@router.get("/health")
+@router.get("")
 async def check_heath(session: SessionCurrent):
     try:
         await session.scalar(select(1))
