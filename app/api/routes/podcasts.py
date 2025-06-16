@@ -53,6 +53,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent):
         PodcastResult(
             **podcast.to_dict(),
             title=podcast.content.title if podcast.content else None,
+            summary=podcast.content.summary if podcast.content else None,
             url=podcast.audio.url if podcast.audio else None,
             duration=podcast.audio.duration if podcast.audio else None,
         )
@@ -103,6 +104,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
     return PodcastResult(
         **podcast.to_dict(),
         title=podcast.content.title if podcast.content else None,
+        summary=podcast.content.summary if podcast.content else None,
         url=podcast.audio.url if podcast.audio else None,
         duration=podcast.audio.duration if podcast.audio else None,
     )

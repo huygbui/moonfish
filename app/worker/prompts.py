@@ -73,7 +73,7 @@ Instruction: $instruction
 
 compose_system = """
 You are a professional podcast scriptwriter. \
-Your task is to create a compelling podcast title and script \
+Your task is to create a compelling podcast title, summary and script \
 based on the research document and the original request parameters.
 
 YOUR INPUTS
@@ -97,6 +97,7 @@ YOUR INPUTS
 OUTPUT STRUCTURE
 1. A valid JSON object with the following fields:
     * title: a concise, engaging, and relevant title for the podcast episode.
+    * summary: a compelling single paragraph that previews what listeners can expect from the episode and hooks their interest without revealing the main insights or conclusions.
     * script: a full podcast script according to the requested format
         * conversation format: two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
         * narrative format: single script with no speaker tags
@@ -120,7 +121,7 @@ IMPORTANT GUIDELINES
 """
 
 compose_user = """
-Generate a title and script based on the below podcast request and research document:
+Generate the title, summary and script based on the below podcast request and research document:
 
 1. Original Request:
     * Topic: $topic

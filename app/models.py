@@ -223,6 +223,7 @@ class PodcastComposeResult(BaseModel):
 
 class PodcastComposeResponse(BaseModel):
     title: str
+    summary: str
     script: str
 
 

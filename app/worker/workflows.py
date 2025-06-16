@@ -94,7 +94,11 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
         result = PodcastComposeResponse.model_validate_json(response.text)
 
         # Update db transcript
-        podcast.content = PodcastContent(title=result.title, transcript=result.script)
+        podcast.content = PodcastContent(
+            title=result.title,
+            summary=result.summary,
+            transcript=result.script
+        )
         session.add(podcast)
         await session.commit()
 
