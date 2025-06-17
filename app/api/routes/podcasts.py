@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Response
-from sqlalchemy import exists, select
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
@@ -145,7 +145,7 @@ async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: Session
         raise HTTPException(status_code=404, detail="Podcast content not found")
 
     try:
-        stat = minio_client.stat_object(minio_bucket, audio.file_name)
+        _ = minio_client.stat_object(minio_bucket, audio.file_name)
 
         # Generate presigned URL valid for 1 hour
         url = minio_client.presigned_get_object(
