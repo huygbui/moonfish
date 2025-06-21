@@ -12,7 +12,7 @@ Length = Literal["short", "medium", "long"]
 Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["narrative", "conversational"]
 Voice = Literal["male", "female"]
-Status = Literal["pending", "active", "completed", "cancelled"]
+Status = Literal["pending", "active", "completed", "cancelled", "failed"]
 Step = Literal["research", "compose", "voice"]
 
 
@@ -34,7 +34,9 @@ class Base(DeclarativeBase):
         Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
         Format: sqlalchemy.Enum("narrative", "conversational", name="format"),
         Voice: sqlalchemy.Enum("male", "female", name="voice"),
-        Status: sqlalchemy.Enum("pending", "active", "completed", "cancelled", name="status"),
+        Status: sqlalchemy.Enum(
+            "pending", "active", "completed", "cancelled", "failed", name="status"
+        ),
         Step: sqlalchemy.Enum("research", "compose", "voice", name="step"),
     }
 

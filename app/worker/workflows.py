@@ -191,7 +191,7 @@ async def handle_failure(input: PodcastTaskInput, ctx: Context):
         podcast = await session.get(Podcast, input.id)
         if not podcast:
             raise Exception("Podcast not found")
-        podcast.status = "cancelled"
+        podcast.status = "failed"
         session.add(podcast)
         await session.commit()
 
