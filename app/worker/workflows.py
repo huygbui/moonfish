@@ -95,9 +95,7 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
 
         # Update db transcript
         podcast.content = PodcastContent(
-            title=result.title,
-            summary=result.summary,
-            transcript=result.script
+            title=result.title, summary=result.summary, transcript=result.script
         )
         session.add(podcast)
         await session.commit()
@@ -165,7 +163,7 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         buffer = None
 
     return PodcastVoiceResult(
-        result={"url": name, "duration": duration}, usage=response.usage_metadata.model_dump()
+        result={"file_name": name, "duration": duration}, usage=response.usage_metadata.model_dump()
     )
 
 
@@ -181,7 +179,7 @@ async def handle_success(input: PodcastTaskInput, ctx: Context):
         podcast.step = None
         podcast.status = "completed"
         podcast.audio = PodcastAudio(
-            url=voice_output.result["url"], duration=voice_output.result["duration"]
+            file_name=voice_output.result["file_name"], duration=voice_output.result["duration"]
         )
         session.add(podcast)
         await session.commit()

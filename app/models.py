@@ -191,6 +191,22 @@ class PodcastResult(BaseModel):
     duration: int | None = None
 
 
+class OngoingPodcastResult(BaseModel):
+    id: int
+
+    topic: str
+    length: Length
+    level: Level
+    format: Format
+    voice: Voice
+    instruction: str | None = None
+    status: Status
+    step: Step | None = None
+
+    created_at: datetime
+    updated_at: datetime
+
+
 class PodcastContentResult(BaseModel):
     id: int
 
@@ -204,7 +220,7 @@ class PodcastContentResult(BaseModel):
 
 class PodcastAudioResult(BaseModel):
     url: str
-    duration: int
+    expires_at: datetime
 
 
 # Workflows

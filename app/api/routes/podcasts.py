@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from app.api.deps import SessionCurrent, UserCurrent
 from app.core.storage import S3Error, minio_bucket, minio_client
 from app.models import (
+    OngoingPodcastResult,
     Podcast,
     PodcastAudio,
     PodcastAudioResult,
@@ -60,6 +61,43 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent):
         )
         for podcast in podcasts
     ]
+
+
+@router.get("/completed", response_model=list[PodcastResult])
+async def get_completed_podcasts(user: UserCurrent, session: SessionCurrent):
+    stmt = (
+        select(Podcast)
+        .where(Podcast.user_id == user.id)
+        .where(Podcast.status.in_(["completed"]))
+        .options(
+            joinedload(Podcast.audio),
+            joinedload(Podcast.content),
+        )
+    )
+    result = await session.execute(stmt)
+    podcasts = result.scalars().unique().all()
+    return [
+        PodcastResult(
+            **podcast.to_dict(),
+            title=podcast.content.title if podcast.content else None,
+            summary=podcast.content.summary if podcast.content else None,
+            file_name=podcast.audio.file_name if podcast.audio else None,
+            duration=podcast.audio.duration if podcast.audio else None,
+        )
+        for podcast in podcasts
+    ]
+
+
+@router.get("/ongoing", response_model=list[OngoingPodcastResult])
+async def get_ongoing_podcasts(user: UserCurrent, session: SessionCurrent):
+    stmt = (
+        select(Podcast)
+        .where(Podcast.user_id == user.id)
+        .where(Podcast.status.in_(["pending", "active"]))
+    )
+    result = await session.execute(stmt)
+    podcasts = result.scalars().unique().all()
+    return [OngoingPodcastResult(**podcast.to_dict()) for podcast in podcasts]
 
 
 @router.delete("/{podcast_id}")
@@ -147,13 +185,15 @@ async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: Session
     try:
         _ = minio_client.stat_object(minio_bucket, audio.file_name)
 
+        # Define expiration
+        expires_duration = timedelta(hours=48)
+        expires_at = datetime.now(UTC) + expires_duration
+
         # Generate presigned URL valid for 1 hour
         url = minio_client.presigned_get_object(
-            bucket_name=minio_bucket,
-            object_name=audio.file_name,
-            expires=timedelta(hours=1),  # 1 hour expiration
+            bucket_name=minio_bucket, object_name=audio.file_name, expires=expires_duration
         )
-        return PodcastAudioResult(url=url, duration=audio.duration)
+        return PodcastAudioResult(url=url, expires_at=expires_at)
 
     except S3Error as e:
         if e.code == "NoSuchKey":
