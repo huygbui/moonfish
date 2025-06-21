@@ -17,6 +17,7 @@ from app.models import (
     PodcastResult,
     PodcastTaskInput,
 )
+from app.worker.hatchet_client import hatchet
 from app.worker.workflows import podcast_generation
 
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
@@ -200,3 +201,27 @@ async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: Session
             raise HTTPException(status_code=404, detail="Podcast audio not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/{podcast_id}/cancel")
+async def cancel_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+    podcast = await session.get(Podcast, podcast_id)
+    if not podcast or podcast.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    if podcast.status == "completed":
+        raise HTTPException(status_code=409, detail="Podcast is already completed")
+    if podcast.status in ["cancelled", "failed"]:
+        raise HTTPException(status_code=400, detail="Podcast is already cancelled")
+
+    if podcast.run_id:
+        try:
+            await hatchet.runs.aio_cancel(run_id=podcast.run_id)
+        except Exception:
+            raise HTTPException(status_code=500, detail="Podcast cancellation failed")
+
+    podcast.status = "cancelled"
+    session.add(podcast)
+    await session.commit()
+
+    return Response(status_code=204)
