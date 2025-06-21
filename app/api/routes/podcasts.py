@@ -29,15 +29,22 @@ async def create_podcast(
     user: UserCurrent,
     session: SessionCurrent,
 ):
-    podcast = Podcast(**req.model_dump(), user_id=user.id, user=user)
-    session.add(podcast)
-    await session.commit()
-    await session.refresh(podcast)
+    try:
+        podcast = Podcast(**req.model_dump(), user=user)
+        session.add(podcast)
+        await session.flush()
 
-    task = PodcastTaskInput.model_validate(podcast.to_dict())
-    _ = await podcast_generation.aio_run_no_wait(task)
+        task = PodcastTaskInput.model_validate(podcast.to_dict())
+        run_ref = await podcast_generation.aio_run_no_wait(task)
+        podcast.hatchet_run_id = run_ref.workflow_run_id
 
-    return podcast
+        await session.commit()
+        await session.refresh(podcast)
+
+        return podcast
+    except Exception:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail="Podcast creation failed")
 
 
 @router.get("", response_model=list[PodcastResult])
@@ -212,11 +219,11 @@ async def cancel_podcast(podcast_id: int, user: UserCurrent, session: SessionCur
     if podcast.status == "completed":
         raise HTTPException(status_code=409, detail="Podcast is already completed")
     if podcast.status in ["cancelled", "failed"]:
-        raise HTTPException(status_code=400, detail="Podcast is already cancelled")
+        return Response(status_code=204)
 
-    if podcast.run_id:
+    if podcast.hatchet_run_id:
         try:
-            await hatchet.runs.aio_cancel(run_id=podcast.run_id)
+            await hatchet.runs.aio_cancel(run_id=podcast.hatchet_run_id)
         except Exception:
             raise HTTPException(status_code=500, detail="Podcast cancellation failed")
 
