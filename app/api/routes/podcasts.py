@@ -29,22 +29,20 @@ async def create_podcast(
     user: UserCurrent,
     session: SessionCurrent,
 ):
+    podcast = Podcast(**req.model_dump(), user=user)
+    session.add(podcast)
+    await session.commit()
+    await session.refresh(podcast)
+
     try:
-        podcast = Podcast(**req.model_dump(), user=user)
-        session.add(podcast)
-        await session.flush()
-
         task = PodcastTaskInput.model_validate(podcast.to_dict())
-        run_ref = await podcast_generation.aio_run_no_wait(task)
-        podcast.hatchet_run_id = run_ref.workflow_run_id
-
-        await session.commit()
-        await session.refresh(podcast)
-
-        return podcast
+        _ = await podcast_generation.aio_run_no_wait(task)
     except Exception:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail="Podcast creation failed")
+        podcast.status = "failed"
+        await session.commit()
+        raise HTTPException(status_code=500, detail="Podcast generation failed")
+
+    return podcast
 
 
 @router.get("", response_model=list[PodcastResult])

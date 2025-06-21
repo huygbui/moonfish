@@ -41,6 +41,7 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
         podcast = await session.get(Podcast, input.id)
         if not podcast:
             raise Exception("Podcast not found")
+        podcast.hatchet_run_id = ctx.workflow_run_id
         podcast.status = "active"
         podcast.step = "research"
         session.add(podcast)
