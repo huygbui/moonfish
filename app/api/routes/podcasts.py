@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -204,6 +205,41 @@ async def get_podcast_audio(podcast_id: int, user: UserCurrent, session: Session
     except S3Error as e:
         if e.code == "NoSuchKey":
             raise HTTPException(status_code=404, detail="Podcast audio not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/{podcast_id}/download")
+async def download_podcast_audio(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+    stmt = (
+        select(PodcastAudio)
+        .join(PodcastAudio.podcast)
+        .where(PodcastAudio.podcast_id == podcast_id)
+        .where(Podcast.user_id == user.id)
+    )
+
+    result = await session.execute(stmt)
+    audio = result.scalar_one_or_none()
+
+    if not audio:
+        raise HTTPException(status_code=404, detail="Podcast content not found")
+
+    try:
+        _ = minio_client.stat_object(minio_bucket, audio.file_name)
+
+        url = minio_client.presigned_get_object(
+            bucket_name=minio_bucket,
+            object_name=audio.file_name,
+            expires=timedelta(minutes=15),
+        )
+
+        return RedirectResponse(url=url, status_code=307)
+
+    except S3Error as e:
+        if e.code == "NoSuchKey":
+            raise HTTPException(status_code=404, detail="Podcast audio not found")
+        # You can add more specific S3 error handling here if needed
+        raise HTTPException(status_code=500, detail=f"Storage error: {e.code}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
