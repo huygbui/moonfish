@@ -227,6 +227,17 @@ class PodcastAudioResult(BaseModel):
     expires_at: datetime
 
 
+# JWT Models
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    user_id: int
+    apple_id: str
+
+
 # Workflows
 class PodcastTaskInput(PodcastCreate):
     id: int
