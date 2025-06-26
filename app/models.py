@@ -162,6 +162,7 @@ class UserCreate(UserBase):
 
 class UserResult(UserBase):
     id: int
+    apple_id: str | None
     created_at: datetime
 
 
