@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     api_key: str
     api_key_header_name: str
 
+    jwt_secret_key: str
+    jwt_algorithm: str
+    jwt_expire_days: int
+
     database_url: str | None = None
 
     gemini_api_key: str

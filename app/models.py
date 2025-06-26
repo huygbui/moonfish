@@ -240,6 +240,21 @@ class TokenData(BaseModel):
     apple_id: str
 
 
+class TokenResult(Token):
+    pass
+
+
+class AppleSignInRequest(BaseModel):
+    apple_id: str
+    email: str | None = None
+    full_name: str | None = None
+
+
+class AuthResult(BaseModel):
+    token: Token
+    user: UserResult
+
+
 # Workflows
 class PodcastTaskInput(PodcastCreate):
     id: int
