@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from fastapi.security import APIKeyHeader, HTTPBearer
+from fastapi.security import HTTPBearer
 
 from app.models import TokenData
 
@@ -9,7 +9,6 @@ from .config import settings
 
 # JWT Bearer token security
 bearer_scheme = HTTPBearer()
-api_key_header = APIKeyHeader(name=settings.api_key_header_name, auto_error=False)
 
 
 # JWT Functions
@@ -42,7 +41,3 @@ def verify_token(token: str) -> TokenData | None:
         return None
     except jwt.PyJWTError:
         return None
-
-
-def verify_api_key(key: str):
-    return key == settings.api_key

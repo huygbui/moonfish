@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session
-from app.core.security import api_key_header, bearer_scheme, verify_api_key, verify_token
+from app.core.security import bearer_scheme, verify_token
 from app.models import User
 
 
@@ -18,6 +18,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 SessionCurrent = Annotated[AsyncSession, Depends(get_session)]
 
 CredentialsCurrent = Annotated[HTTPAuthorizationCredentials, Security(bearer_scheme)]
+
 
 async def get_user(credentials: CredentialsCurrent, session: SessionCurrent) -> User:
     token = credentials.credentials
@@ -42,13 +43,3 @@ async def get_user(credentials: CredentialsCurrent, session: SessionCurrent) -> 
 
 
 UserCurrent = Annotated[User, Depends(get_user)]
-
-
-def get_api_key(key: str = Security(api_key_header)):
-    if verify_api_key(key):
-        return key
-    else:
-        raise HTTPException(status_code=401, detail="Invalid or missing API Key")
-
-
-APIKeyDep = Depends(get_api_key)

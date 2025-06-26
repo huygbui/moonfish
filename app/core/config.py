@@ -12,9 +12,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     environment: Literal["development", "production"] = "development"
 
-    api_key: str
-    api_key_header_name: str
-
     jwt_secret_key: str
     jwt_algorithm: str
     jwt_expire_days: int
