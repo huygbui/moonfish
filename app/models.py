@@ -188,10 +188,10 @@ class Podcast(Base):
         index=True,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="episodes")
+    user: Mapped["User"] = relationship("User", back_populates="podcasts")
 
     episodes: Mapped[list["Episode"]] = relationship(
-        "Episode", back_populates="user", cascade="all, delete-orphan"
+        "Episode", back_populates="podcast", cascade="all, delete-orphan"
     )
 
 
@@ -269,6 +269,25 @@ class EpisodeContentResult(BaseModel):
 class EpisodeAudioResult(BaseModel):
     url: str
     expires_at: datetime
+
+
+# Podcast
+class PodcastCreate(BaseModel):
+    title: str
+
+    format: Format
+
+    voice1: Voice
+    name1: str
+    voice2: Voice | None = None
+    name2: str | None = None
+
+
+class PodcastResult(PodcastCreate):
+    id: int
+
+    created_at: datetime
+    updated_at: datetime
 
 
 # JWT Models

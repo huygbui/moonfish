@@ -8,7 +8,6 @@ from sqlalchemy.orm import joinedload
 from app.api.deps import SessionCurrent, UserCurrent
 from app.core.storage import S3Error, minio_bucket, minio_client
 from app.models import (
-    OngoingEpisodeResult,
     Episode,
     EpisodeAudio,
     EpisodeAudioResult,
@@ -17,6 +16,7 @@ from app.models import (
     EpisodeCreate,
     EpisodeResult,
     EpisodeTaskInput,
+    OngoingEpisodeResult,
 )
 from app.worker.hatchet_client import hatchet
 from app.worker.workflows import podcast_generation
