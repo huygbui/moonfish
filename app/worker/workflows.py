@@ -13,15 +13,15 @@ from app.core.config import settings
 from app.core.database import async_session
 from app.core.storage import Minio, minio_bucket, minio_client
 from app.models import (
-    Podcast,
-    PodcastAudio,
-    PodcastComposeResponse,
-    PodcastComposeResult,
-    PodcastContent,
-    PodcastResearchResult,
-    PodcastTaskFailure,
-    PodcastTaskInput,
-    PodcastVoiceResult,
+    Episode,
+    EpisodeAudio,
+    EpisodeComposeResponse,
+    EpisodeComposeResult,
+    EpisodeContent,
+    EpisodeResearchResult,
+    EpisodeTaskFailure,
+    EpisodeTaskInput,
+    EpisodeVoiceResult,
 )
 from app.worker import prompts, tools
 from app.worker.hatchet_client import hatchet
@@ -35,16 +35,16 @@ gemini_tts_model = settings.gemini_tts_model
 
 
 @podcast_generation.task()
-async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResult:
+async def research(input: EpisodeTaskInput, ctx: Context) -> EpisodeResearchResult:
     # Update db status
     async with async_session() as session:
-        podcast = await session.get(Podcast, input.id)
-        if not podcast:
-            raise Exception("Podcast not found")
-        podcast.hatchet_run_id = ctx.workflow_run_id
-        podcast.status = "active"
-        podcast.step = "research"
-        session.add(podcast)
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+        episode.hatchet_run_id = ctx.workflow_run_id
+        episode.status = "active"
+        episode.step = "research"
+        session.add(episode)
         await session.commit()
 
         # Generate
@@ -59,23 +59,23 @@ async def research(input: PodcastTaskInput, ctx: Context) -> PodcastResearchResu
             ),
         )
 
-    return PodcastResearchResult(result=response.text, usage=response.usage_metadata.model_dump())
+    return EpisodeResearchResult(result=response.text, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[research])
-async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult:
+async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeResult:
     # Get output
-    research_output = PodcastResearchResult.model_validate(ctx.task_output(research))
+    research_output = EpisodeResearchResult.model_validate(ctx.task_output(research))
 
     # Update db status
     async with async_session() as session:
-        podcast = await session.get(Podcast, input.id)
-        if not podcast:
-            raise Exception("Podcast not found")
-        podcast.step = "compose"
-        session.add(podcast)
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+        episode.step = "compose"
+        session.add(episode)
         await session.commit()
-        await session.refresh(podcast)
+        await session.refresh(episode)
 
         # Generate transcript
         response = await gemini_client.aio.models.generate_content(
@@ -88,34 +88,34 @@ async def compose(input: PodcastTaskInput, ctx: Context) -> PodcastComposeResult
             ],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=PodcastComposeResponse,
+                response_schema=EpisodeComposeResponse,
             ),
         )
 
-        result = PodcastComposeResponse.model_validate_json(response.text)
+        result = EpisodeComposeResponse.model_validate_json(response.text)
 
         # Update db transcript
-        podcast.content = PodcastContent(
+        episode.content = EpisodeContent(
             title=result.title, summary=result.summary, transcript=result.script
         )
-        session.add(podcast)
+        session.add(episode)
         await session.commit()
 
-    return PodcastComposeResult(result=result.script, usage=response.usage_metadata.model_dump())
+    return EpisodeComposeResult(result=result.script, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
-async def voice(input: PodcastTaskInput, ctx: Context):
+async def voice(input: EpisodeTaskInput, ctx: Context):
     # Get output
-    compose_output = PodcastComposeResult.model_validate(ctx.task_output(compose))
+    compose_output = EpisodeComposeResult.model_validate(ctx.task_output(compose))
 
     # Update db status
     async with async_session() as session:
-        podcast = await session.get(Podcast, input.id)
-        if not podcast:
-            raise Exception("Podcast not found")
-        podcast.step = "voice"
-        session.add(podcast)
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+        episode.step = "voice"
+        session.add(episode)
         await session.commit()
 
     # Generate audio
@@ -163,40 +163,40 @@ async def voice(input: PodcastTaskInput, ctx: Context):
         buffer.close()
         buffer = None
 
-    return PodcastVoiceResult(
+    return EpisodeVoiceResult(
         result={"file_name": name, "duration": duration}, usage=response.usage_metadata.model_dump()
     )
 
 
 @podcast_generation.on_success_task()
-async def handle_success(input: PodcastTaskInput, ctx: Context):
-    voice_output = PodcastVoiceResult.model_validate(ctx.task_output(voice))
+async def handle_success(input: EpisodeTaskInput, ctx: Context):
+    voice_output = EpisodeVoiceResult.model_validate(ctx.task_output(voice))
 
     # Update db status
     async with async_session() as session:
-        podcast = await session.get(Podcast, input.id)
-        if not podcast:
-            raise Exception("Podcast not found")
-        podcast.step = None
-        podcast.status = "completed"
-        podcast.audio = PodcastAudio(
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+        episode.step = None
+        episode.status = "completed"
+        episode.audio = EpisodeAudio(
             file_name=voice_output.result["file_name"], duration=voice_output.result["duration"]
         )
-        session.add(podcast)
+        session.add(episode)
         await session.commit()
 
 
 @podcast_generation.on_failure_task()
-async def handle_failure(input: PodcastTaskInput, ctx: Context):
+async def handle_failure(input: EpisodeTaskInput, ctx: Context):
     async with async_session() as session:
-        podcast = await session.get(Podcast, input.id)
-        if not podcast:
-            raise Exception("Podcast not found")
-        podcast.status = "failed"
-        session.add(podcast)
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+        episode.status = "failed"
+        session.add(episode)
         await session.commit()
 
-    return PodcastTaskFailure(error=ctx.task_run_errors)
+    return EpisodeTaskFailure(error=ctx.task_run_errors)
 
 
 def process_audio(data: bytes) -> Tuple[BytesIO, int, int]:

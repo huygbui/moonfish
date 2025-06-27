@@ -52,13 +52,13 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
 
-    podcasts: Mapped[list["Podcast"]] = relationship(
-        "Podcast", back_populates="user", cascade="all, delete-orphan"
+    episodes: Mapped[list["Episode"]] = relationship(
+        "Episode", back_populates="user", cascade="all, delete-orphan"
     )
 
 
-class PodcastContent(Base):
-    __tablename__ = "podcast_content"
+class EpisodeContent(Base):
+    __tablename__ = "episode_content"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String)
@@ -74,16 +74,16 @@ class PodcastContent(Base):
         onupdate=func.now(),
     )
 
-    podcast_id: Mapped[int] = mapped_column(
-        ForeignKey("podcast.id", ondelete="CASCADE"),
+    episode_id: Mapped[int] = mapped_column(
+        ForeignKey("episode.id", ondelete="CASCADE"),
         index=True,
     )
 
-    podcast: Mapped["Podcast"] = relationship("Podcast", back_populates="content")
+    episode: Mapped["Episode"] = relationship("Episode", back_populates="content")
 
 
-class PodcastAudio(Base):
-    __tablename__ = "podcast_audio"
+class EpisodeAudio(Base):
+    __tablename__ = "episode_audio"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     file_name: Mapped[str] = mapped_column(String)
@@ -98,16 +98,16 @@ class PodcastAudio(Base):
         onupdate=func.now(),
     )
 
-    podcast_id: Mapped[int] = mapped_column(
-        ForeignKey("podcast.id", ondelete="CASCADE"),
+    episode_id: Mapped[int] = mapped_column(
+        ForeignKey("episode.id", ondelete="CASCADE"),
         index=True,
     )
 
-    podcast: Mapped["Podcast"] = relationship("Podcast", back_populates="audio")
+    episode: Mapped["Episode"] = relationship("Episode", back_populates="audio")
 
 
-class Podcast(Base):
-    __tablename__ = "podcast"
+class Episode(Base):
+    __tablename__ = "episode"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     topic: Mapped[str] = mapped_column(String)
@@ -136,17 +136,17 @@ class Podcast(Base):
         index=True,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="podcasts")
+    user: Mapped["User"] = relationship("User", back_populates="episodes")
 
-    content: Mapped[Optional["PodcastContent"]] = relationship(
-        "PodcastContent",
-        back_populates="podcast",
-        cascade="all, delete-orphan",  # Delete content when podcast is deleted
+    content: Mapped[Optional["EpisodeContent"]] = relationship(
+        "EpisodeContent",
+        back_populates="episode",
+        cascade="all, delete-orphan",  # Delete content when episode is deleted
     )
-    audio: Mapped[Optional["PodcastAudio"]] = relationship(
-        "PodcastAudio",
-        back_populates="podcast",
-        cascade="all, delete-orphan",  # Delete audio when podcast is deleted
+    audio: Mapped[Optional["EpisodeAudio"]] = relationship(
+        "EpisodeAudio",
+        back_populates="episode",
+        cascade="all, delete-orphan",  # Delete audio when episode is deleted
     )
 
 
@@ -167,8 +167,8 @@ class UserResult(UserBase):
     pass
 
 
-# Podcast
-class PodcastCreate(BaseModel):
+# Episode
+class EpisodeCreate(BaseModel):
     topic: str
     length: Length
     level: Level
@@ -177,7 +177,7 @@ class PodcastCreate(BaseModel):
     instruction: str | None = None
 
 
-class PodcastResult(BaseModel):
+class EpisodeResult(BaseModel):
     id: int
 
     topic: str
@@ -198,7 +198,7 @@ class PodcastResult(BaseModel):
     duration: int | None = None
 
 
-class OngoingPodcastResult(BaseModel):
+class OngoingEpisodeResult(BaseModel):
     id: int
 
     topic: str
@@ -214,7 +214,7 @@ class OngoingPodcastResult(BaseModel):
     updated_at: datetime
 
 
-class PodcastContentResult(BaseModel):
+class EpisodeContentResult(BaseModel):
     id: int
 
     title: str
@@ -225,7 +225,7 @@ class PodcastContentResult(BaseModel):
     updated_at: datetime
 
 
-class PodcastAudioResult(BaseModel):
+class EpisodeAudioResult(BaseModel):
     url: str
     expires_at: datetime
 
@@ -257,30 +257,30 @@ class AuthResult(BaseModel):
 
 
 # Workflows
-class PodcastTaskInput(PodcastCreate):
+class EpisodeTaskInput(EpisodeCreate):
     id: int
 
 
-class PodcastResearchResult(BaseModel):
+class EpisodeResearchResult(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
-class PodcastComposeResult(BaseModel):
+class EpisodeComposeResult(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
-class PodcastComposeResponse(BaseModel):
+class EpisodeComposeResponse(BaseModel):
     title: str
     summary: str
     script: str
 
 
-class PodcastVoiceResult(BaseModel):
+class EpisodeVoiceResult(BaseModel):
     result: dict[str, Any]
     usage: dict[str, Any]
 
 
-class PodcastTaskFailure(BaseModel):
+class EpisodeTaskFailure(BaseModel):
     error: dict[str, str]
