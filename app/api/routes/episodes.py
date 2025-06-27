@@ -17,6 +17,7 @@ from app.models import (
     EpisodeResult,
     EpisodeTaskInput,
     OngoingEpisodeResult,
+    Podcast,
 )
 from app.worker.hatchet_client import hatchet
 from app.worker.workflows import podcast_generation
@@ -30,7 +31,23 @@ async def create_episode(
     user: UserCurrent,
     session: SessionCurrent,
 ):
-    episode = Episode(**req.model_dump(), user=user)
+    podcast = await session.get(Podcast, req.podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    if podcast.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    episode = Episode(
+        **req.model_dump(),
+        format=podcast.format,
+        voice1=podcast.voice1,
+        name1=podcast.name1,
+        voice2=podcast.voice2,
+        name2=podcast.name2,
+        user=user,
+        podcast=podcast,
+    )
     session.add(episode)
     await session.commit()
     await session.refresh(episode)

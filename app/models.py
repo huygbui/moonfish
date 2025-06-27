@@ -118,7 +118,10 @@ class Episode(Base):
     length: Mapped[Length]
     level: Mapped[Level]
     format: Mapped[Format]
-    voice: Mapped[Voice]
+    voice1: Mapped[Voice]
+    name1: Mapped[str] = mapped_column(String, nullable=True)
+    voice2: Mapped[Optional[Voice]] = mapped_column(nullable=True)
+    name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[Status] = mapped_column(default="pending")
     step: Mapped[Optional[Step]] = mapped_column(nullable=True)
@@ -210,11 +213,11 @@ class UserResult(UserBase):
 
 # Episode
 class EpisodeCreate(BaseModel):
+    podcast_id: int
+
     topic: str
     length: Length
     level: Level
-    format: Format
-    voice: Voice
     instruction: str | None = None
 
 
@@ -224,9 +227,14 @@ class EpisodeResult(BaseModel):
     topic: str
     length: Length
     level: Level
-    format: Format
-    voice: Voice
     instruction: str | None = None
+
+    format: Format
+    voice1: Voice
+    name1: str
+    voice2: Voice | None = None
+    name2: str | None = None
+
     status: Status | None = None
     step: Step | None = None
 
@@ -245,9 +253,14 @@ class OngoingEpisodeResult(BaseModel):
     topic: str
     length: Length
     level: Level
-    format: Format
-    voice: Voice
     instruction: str | None = None
+
+    format: Format
+    voice1: Voice
+    name1: str
+    voice2: Voice | None = None
+    name2: str | None = None
+
     status: Status
     step: Step | None = None
 
