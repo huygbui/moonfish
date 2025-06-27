@@ -2,10 +2,20 @@ from collections import deque
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
 from app.core.storage import DeleteObject, S3Error, minio_bucket, minio_client
-from app.models import Podcast, PodcastCreate, PodcastResult
+from app.models import (
+    Episode,
+    EpisodeCreate,
+    EpisodeResult,
+    EpisodeTaskInput,
+    Podcast,
+    PodcastCreate,
+    PodcastResult,
+)
+from app.worker.workflows import podcast_generation
 
 router = APIRouter(prefix="/podcast", tags=["Podcasts"])
 
@@ -84,3 +94,67 @@ async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCur
     await session.commit()
 
     return Response(status_code=204)
+
+
+@router.get("/{podcast_id}/episodes", response_model=list[EpisodeResult])
+async def get_podcast_episodes(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+    stmt = (
+        select(Episode)
+        .where(Episode.podcast_id == podcast_id)
+        .where(Episode.user_id == user.id)
+        .options(
+            joinedload(Episode.audio),
+            joinedload(Episode.content),
+        )
+    )
+    result = await session.execute(stmt)
+    episodes = result.scalars().unique().all()
+    return [
+        EpisodeResult(
+            **episode.to_dict(),
+            title=episode.content.title if episode.content else None,
+            summary=episode.content.summary if episode.content else None,
+            file_name=episode.audio.file_name if episode.audio else None,
+            duration=episode.audio.duration if episode.audio else None,
+        )
+        for episode in episodes
+    ]
+
+
+@router.post("/{podcast_id}/episodes", response_model=EpisodeResult)
+async def create_podcast_episode(
+    podcast_id: int,
+    req: EpisodeCreate,
+    user: UserCurrent,
+    session: SessionCurrent,
+):
+    podcast = await session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    if podcast.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    episode = Episode(
+        **req.model_dump(),
+        format=podcast.format,
+        voice1=podcast.voice1,
+        name1=podcast.name1,
+        voice2=podcast.voice2,
+        name2=podcast.name2,
+        user_id=user.id,
+        podcast_id=podcast_id,
+    )
+    session.add(episode)
+    await session.commit()
+    await session.refresh(episode)
+
+    try:
+        task = EpisodeTaskInput.model_validate(episode.to_dict())
+        _ = await podcast_generation.aio_run_no_wait(task)
+    except Exception:
+        episode.status = "failed"
+        await session.commit()
+        raise HTTPException(status_code=500, detail="Episode generation failed")
+
+    return episode

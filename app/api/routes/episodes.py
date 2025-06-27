@@ -13,53 +13,12 @@ from app.models import (
     EpisodeAudioResult,
     EpisodeContent,
     EpisodeContentResult,
-    EpisodeCreate,
     EpisodeResult,
-    EpisodeTaskInput,
     OngoingEpisodeResult,
-    Podcast,
 )
 from app.worker.hatchet_client import hatchet
-from app.worker.workflows import podcast_generation
 
 router = APIRouter(prefix="/episodes", tags=["Episodes"])
-
-
-@router.post("", response_model=EpisodeResult)
-async def create_episode(
-    req: EpisodeCreate,
-    user: UserCurrent,
-    session: SessionCurrent,
-):
-    podcast = await session.get(Podcast, req.podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    if podcast.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    episode = Episode(
-        **req.model_dump(),
-        format=podcast.format,
-        voice1=podcast.voice1,
-        name1=podcast.name1,
-        voice2=podcast.voice2,
-        name2=podcast.name2,
-        user_id=user.id,
-    )
-    session.add(episode)
-    await session.commit()
-    await session.refresh(episode)
-
-    try:
-        task = EpisodeTaskInput.model_validate(episode.to_dict())
-        _ = await podcast_generation.aio_run_no_wait(task)
-    except Exception:
-        episode.status = "failed"
-        await session.commit()
-        raise HTTPException(status_code=500, detail="Episode generation failed")
-
-    return episode
 
 
 @router.get("", response_model=list[EpisodeResult])

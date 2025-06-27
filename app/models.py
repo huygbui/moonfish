@@ -213,8 +213,6 @@ class UserResult(UserBase):
 
 # Episode
 class EpisodeCreate(BaseModel):
-    podcast_id: int
-
     topic: str
     length: Length
     level: Level
@@ -339,6 +337,8 @@ class EpisodeTaskInput(EpisodeCreate):
     name1: str
     voice2: Voice | None = None
     name2: str | None = None
+
+    podcast_id: int
 
 
 class EpisodeResearchResult(BaseModel):
