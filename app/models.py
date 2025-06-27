@@ -52,6 +52,10 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
 
+    podcasts: Mapped[list["Podcast"]] = relationship(
+        "Podcast", back_populates="user", cascade="all, delete-orphan"
+    )
+
     episodes: Mapped[list["Episode"]] = relationship(
         "Episode", back_populates="user", cascade="all, delete-orphan"
     )
@@ -136,7 +140,13 @@ class Episode(Base):
         index=True,
     )
 
+    podcast_id: Mapped[int] = mapped_column(
+        ForeignKey("podcast.id", ondelete="CASCADE"),
+        index=True,
+    )
+
     user: Mapped["User"] = relationship("User", back_populates="episodes")
+    podcast: Mapped["Podcast"] = relationship("Podcast", back_populates="episodes")
 
     content: Mapped[Optional["EpisodeContent"]] = relationship(
         "EpisodeContent",
@@ -147,6 +157,41 @@ class Episode(Base):
         "EpisodeAudio",
         back_populates="episode",
         cascade="all, delete-orphan",  # Delete audio when episode is deleted
+    )
+
+
+class Podcast(Base):
+    __tablename__ = "podcast"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    title: Mapped[str] = mapped_column(String)
+    format: Mapped[Format]
+    voice1: Mapped[Voice]
+    name1: Mapped[str] = mapped_column(String, nullable=True)
+    voice2: Mapped[Optional[Voice]] = mapped_column(nullable=True)
+    name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"),
+        index=True,
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="episodes")
+
+    episodes: Mapped[list["Episode"]] = relationship(
+        "Episode", back_populates="user", cascade="all, delete-orphan"
     )
 
 
