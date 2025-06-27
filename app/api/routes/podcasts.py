@@ -21,7 +21,7 @@ from app.models import (
 from app.worker.hatchet_client import hatchet
 from app.worker.workflows import podcast_generation
 
-router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
+router = APIRouter(prefix="/podcasts", tags=["Episodes"])
 
 
 @router.post("", response_model=PodcastResult)
