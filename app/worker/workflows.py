@@ -146,7 +146,7 @@ async def voice(input: EpisodeTaskInput, ctx: Context):
         ),
     )
     data = response.candidates[0].content.parts[0].inline_data.data
-    name = f"{input.id}.mp3"
+    name = f"{input.podcast_id}/{input.id}.mp3"
 
     # Process and upload to minio
     buffer, buffer_size, duration = await asyncio.to_thread(process_audio, data)

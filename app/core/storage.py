@@ -1,4 +1,5 @@
 from minio import Minio, S3Error
+from minio.deleteobjects import DeleteObject
 
 from .config import settings
 
@@ -11,3 +12,4 @@ minio_client = Minio(
 minio_bucket = settings.minio_bucket
 
 S3Error = S3Error
+DeleteObject = DeleteObject

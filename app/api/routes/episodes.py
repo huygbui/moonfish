@@ -45,8 +45,7 @@ async def create_episode(
         name1=podcast.name1,
         voice2=podcast.voice2,
         name2=podcast.name2,
-        user=user,
-        podcast=podcast,
+        user_id=user.id,
     )
     session.add(episode)
     await session.commit()

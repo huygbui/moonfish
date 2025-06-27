@@ -223,6 +223,7 @@ class EpisodeCreate(BaseModel):
 
 class EpisodeResult(BaseModel):
     id: int
+    podcast_id: int
 
     topic: str
     length: Length
@@ -249,6 +250,7 @@ class EpisodeResult(BaseModel):
 
 class OngoingEpisodeResult(BaseModel):
     id: int
+    podcast_id: int
 
     topic: str
     length: Length
@@ -332,6 +334,11 @@ class AuthResult(BaseModel):
 # Workflows
 class EpisodeTaskInput(EpisodeCreate):
     id: int
+    format: Format
+    voice1: Voice
+    name1: str
+    voice2: Voice | None = None
+    name2: str | None = None
 
 
 class EpisodeResearchResult(BaseModel):
