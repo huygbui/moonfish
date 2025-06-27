@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from sqlalchemy import select
 
 from app.api.deps import SessionCurrent
-from app.models import User, UserCreate, UserResult
+from app.models import User, UserResult
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

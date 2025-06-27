@@ -159,10 +159,6 @@ class UserBase(BaseModel):
     created_at: datetime
 
 
-class UserCreate(UserBase):
-    pass
-
-
 class UserResult(UserBase):
     pass
 
