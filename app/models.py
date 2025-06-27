@@ -45,9 +45,9 @@ class User(Base):
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    apple_id: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=True)
-    email: Mapped[str | None] = mapped_column(String, nullable=True)
-    name: Mapped[str | None] = mapped_column(String, nullable=True)
+    apple_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
@@ -152,8 +152,11 @@ class Podcast(Base):
 
 # User
 class UserBase(BaseModel):
-    email: EmailStr
-    name: str
+    id: int
+    apple_id: str | None
+    email: EmailStr | None
+    name: str | None
+    created_at: datetime
 
 
 class UserCreate(UserBase):
@@ -161,9 +164,7 @@ class UserCreate(UserBase):
 
 
 class UserResult(UserBase):
-    id: int
-    apple_id: str | None
-    created_at: datetime
+    pass
 
 
 # Podcast
