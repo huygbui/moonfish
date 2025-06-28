@@ -176,6 +176,8 @@ class Podcast(Base):
     name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    image_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
@@ -294,6 +296,8 @@ class PodcastCreate(BaseModel):
     name1: str
     voice2: Voice | None = None
     name2: str | None = None
+
+    description: str | None = None
 
 
 class PodcastResult(PodcastCreate):
