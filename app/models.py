@@ -176,7 +176,7 @@ class Podcast(Base):
     name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    image_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    image_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
@@ -305,6 +305,12 @@ class PodcastResult(PodcastCreate):
 
     created_at: datetime
     updated_at: datetime
+
+    image_path: str | None = None
+
+
+class PodcastImageUploadURLResult(BaseModel):
+    url: str
 
 
 # JWT Models
