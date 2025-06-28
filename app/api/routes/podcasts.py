@@ -1,4 +1,5 @@
 from collections import deque
+from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
@@ -13,11 +14,20 @@ from app.models import (
     EpisodeTaskInput,
     Podcast,
     PodcastCreate,
+    PodcastImageUploadURLResult,
     PodcastResult,
 )
 from app.worker.workflows import podcast_generation
 
-router = APIRouter(prefix="/podcast", tags=["Podcasts"])
+router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
+
+
+@router.get("", response_model=list[PodcastResult])
+async def get_podcasts(user: UserCurrent, session: SessionCurrent):
+    stmt = select(Podcast).where(Podcast.user_id == user.id)
+    result = await session.execute(stmt)
+    podcasts = result.scalars().all()
+    return podcasts
 
 
 @router.post("", response_model=PodcastResult)
@@ -34,13 +44,25 @@ async def create_podcast(
     return podcast
 
 
-@router.get("", response_model=list[PodcastResult])
-async def get_podcasts(user: UserCurrent, session: SessionCurrent):
-    stmt = select(Podcast).where(Podcast.user_id == user.id)
-    result = await session.execute(stmt)
-    podcasts = result.scalars().all()
-    return podcasts
-    # return [PodcastResult(**podcast.to_dict()) for podcast in podcasts]
+@router.post("/{podcast_id}/image_upload", response_model=PodcastImageUploadURLResult)
+async def create_image_upload_url(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+    podcast = await session.get(Podcast, podcast_id)
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    if podcast.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    file_name = f"{podcast_id}/{podcast_id}.jpg"
+
+    upload_url = minio_client.presigned_put_object(
+        bucket_name=minio_bucket, object_name=file_name, expires=timedelta(hours=1)
+    )
+
+    podcast.image_path = file_name
+    await session.commit()
+
+    return PodcastImageUploadURLResult(url=upload_url)
 
 
 @router.get("/{podcast_id}", response_model=PodcastResult)
