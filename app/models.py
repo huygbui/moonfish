@@ -306,7 +306,7 @@ class PodcastResult(PodcastCreate):
     created_at: datetime
     updated_at: datetime
 
-    image_path: str | None = None
+    image_url: str | None = None
 
 
 class PodcastImageUploadURLResult(BaseModel):

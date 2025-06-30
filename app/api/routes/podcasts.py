@@ -27,7 +27,22 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent):
     stmt = select(Podcast).where(Podcast.user_id == user.id)
     result = await session.execute(stmt)
     podcasts = result.scalars().all()
-    return podcasts
+
+    def get_presigned_url(object_name: str) -> str | None:
+        try:
+            return minio_client.presigned_get_object(
+                bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=48)
+            )
+        except Exception:
+            return None
+
+    return [
+        PodcastResult(
+            **podcast.to_dict(),
+            image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+        )
+        for podcast in podcasts
+    ]
 
 
 @router.post("", response_model=PodcastResult)
