@@ -2,7 +2,7 @@ from collections import deque
 from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
@@ -16,6 +16,8 @@ from app.models import (
     PodcastCreate,
     PodcastImageUploadURLResult,
     PodcastResult,
+    PodcastUpdate,
+    PodcastUpdateResult,
 )
 from app.worker.workflows import podcast_generation
 
@@ -23,18 +25,10 @@ router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
 
 @router.get("", response_model=list[PodcastResult])
-async def get_podcasts(user: UserCurrent, session: SessionCurrent):
+async def get_podcasts(user: UserCurrent, session: SessionCurrent) -> list[PodcastResult]:
     stmt = select(Podcast).where(Podcast.user_id == user.id)
     result = await session.execute(stmt)
     podcasts = result.scalars().all()
-
-    def get_presigned_url(object_name: str) -> str | None:
-        try:
-            return minio_client.presigned_get_object(
-                bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=48)
-            )
-        except Exception:
-            return None
 
     return [
         PodcastResult(
@@ -50,7 +44,7 @@ async def create_podcast(
     req: PodcastCreate,
     user: UserCurrent,
     session: SessionCurrent,
-):
+) -> PodcastResult:
     podcast = Podcast(**req.model_dump(), user=user)
     session.add(podcast)
     await session.commit()
@@ -60,7 +54,9 @@ async def create_podcast(
 
 
 @router.post("/{podcast_id}/image_upload", response_model=PodcastImageUploadURLResult)
-async def create_image_upload_url(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+async def create_image_upload_url(
+    podcast_id: int, user: UserCurrent, session: SessionCurrent
+) -> PodcastImageUploadURLResult:
     podcast = await session.get(Podcast, podcast_id)
     if not podcast:
         raise HTTPException(status_code=404, detail="Podcast not found")
@@ -90,6 +86,44 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
         raise HTTPException(status_code=404, detail="Podcast not found")
 
     return podcast
+
+
+@router.patch("/{podcast_id}", response_model=PodcastUpdateResult)
+async def update_podcast(
+    req: PodcastUpdate, podcast_id: int, user: UserCurrent, session: SessionCurrent
+) -> PodcastUpdateResult:
+    update_data = req.model_dump(exclude_unset=True)
+
+    if not update_data:
+        stmt = select(Podcast).where(Podcast.id == podcast_id, Podcast.user_id == user.id)
+        podcast = await session.scalar(stmt)
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
+        return PodcastResult(
+            **podcast.to_dict(),
+            image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+        )
+
+    stmt = (
+        update(Podcast)
+        .where(Podcast.id == podcast_id)
+        .where(Podcast.user_id == user.id)
+        .values(**update_data)
+        .returning(Podcast)
+    )
+
+    result = await session.execute(stmt)
+    podcast = result.scalar_one_or_none()
+
+    if not podcast:
+        raise HTTPException(status_code=404, detail="Podcast not found")
+
+    await session.commit()
+
+    return PodcastResult(
+        **podcast.to_dict(),
+        image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+    )
 
 
 @router.delete("/{podcast_id}")
@@ -134,7 +168,9 @@ async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCur
 
 
 @router.get("/{podcast_id}/episodes", response_model=list[EpisodeResult])
-async def get_podcast_episodes(podcast_id: int, user: UserCurrent, session: SessionCurrent):
+async def get_podcast_episodes(
+    podcast_id: int, user: UserCurrent, session: SessionCurrent
+) -> list[EpisodeResult]:
     stmt = (
         select(Episode)
         .where(Episode.podcast_id == podcast_id)
@@ -195,3 +231,12 @@ async def create_podcast_episode(
         raise HTTPException(status_code=500, detail="Episode generation failed")
 
     return episode
+
+
+def get_presigned_url(object_name: str) -> str | None:
+    try:
+        return minio_client.presigned_get_object(
+            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=48)
+        )
+    except Exception:
+        return None

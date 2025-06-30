@@ -300,6 +300,19 @@ class PodcastCreate(BaseModel):
     description: str | None = None
 
 
+class PodcastUpdate(PodcastCreate):
+    title: str | None = None
+
+    format: Format | None = None
+
+    voice1: Voice | None = None
+    name1: str | None = None
+    voice2: Voice | None = None
+    name2: str | None = None
+
+    description: str | None = None
+
+
 class PodcastResult(PodcastCreate):
     id: int
 
@@ -307,6 +320,10 @@ class PodcastResult(PodcastCreate):
     updated_at: datetime
 
     image_url: str | None = None
+
+
+class PodcastUpdateResult(PodcastResult):
+    pass
 
 
 class PodcastImageUploadURLResult(BaseModel):
