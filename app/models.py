@@ -13,7 +13,7 @@ Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["narrative", "conversational"]
 Voice = Literal["male", "female"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
-Step = Literal["research", "compose", "voice"]
+Step = Literal["research", "compose", "cover", "voice"]
 
 
 # Tables
@@ -37,7 +37,7 @@ class Base(DeclarativeBase):
         Status: sqlalchemy.Enum(
             "pending", "active", "completed", "cancelled", "failed", name="status"
         ),
-        Step: sqlalchemy.Enum("research", "compose", "voice", name="step"),
+        Step: sqlalchemy.Enum("research", "compose", "cover", "voice", name="step"),
     }
 
 
@@ -239,6 +239,9 @@ class EpisodeResult(BaseModel):
     voice2: Voice | None = None
     name2: str | None = None
 
+    cover: str | None = None
+    cover_description: str | None = None
+
     status: Status | None = None
     step: Step | None = None
 
@@ -249,28 +252,6 @@ class EpisodeResult(BaseModel):
     summary: str | None = None
     file_name: str | None = None
     duration: int | None = None
-
-
-class OngoingEpisodeResult(BaseModel):
-    id: int
-    podcast_id: int
-
-    topic: str
-    length: Length
-    level: Level
-    instruction: str | None = None
-
-    format: Format
-    voice1: Voice
-    name1: str
-    voice2: Voice | None = None
-    name2: str | None = None
-
-    status: Status
-    step: Step | None = None
-
-    created_at: datetime
-    updated_at: datetime
 
 
 class EpisodeContentResult(BaseModel):

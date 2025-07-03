@@ -14,7 +14,6 @@ from app.models import (
     EpisodeContent,
     EpisodeContentResult,
     EpisodeResult,
-    OngoingEpisodeResult,
 )
 from app.worker.hatchet_client import hatchet
 
@@ -68,18 +67,6 @@ async def get_completed_episodes(user: UserCurrent, session: SessionCurrent):
         )
         for episode in episodes
     ]
-
-
-@router.get("/ongoing", response_model=list[OngoingEpisodeResult])
-async def get_ongoing_episodes(user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(Episode)
-        .where(Episode.user_id == user.id)
-        .where(Episode.status.in_(["pending", "active"]))
-    )
-    result = await session.execute(stmt)
-    episodes = result.scalars().unique().all()
-    return [OngoingEpisodeResult(**episode.to_dict()) for episode in episodes]
 
 
 @router.delete("/{episode_id}")
