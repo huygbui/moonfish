@@ -145,8 +145,8 @@ YOUR INPUT
 OUTPUT STRUCTURE
 A valid JSON object with the following fields:
     * art: a single string containing all the characters for your ascii art
-        * Must be exactly 8 lines tall. Each line is separated by a \n character.
-        * Each line must be exactly 16 characters wide.
+        * Must be exactly 8 lines tall.
+        * Each line must be exactly 16 characters wide and separated by a new line character.
         * Must only use the characters 0 for background and 1 for foreground.
         * Must be a simple, abstract representation of the provided topic.
     * description: a brief, one-sentence explaining how the art represent the provided topic
