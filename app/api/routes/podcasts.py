@@ -85,7 +85,10 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
     if podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
 
-    return podcast
+    return PodcastResult(
+        **podcast.to_dict(),
+        image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+    )
 
 
 @router.patch("/{podcast_id}", response_model=PodcastUpdateResult)
