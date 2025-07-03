@@ -126,6 +126,9 @@ class Episode(Base):
     status: Mapped[Status] = mapped_column(default="pending")
     step: Mapped[Optional[Step]] = mapped_column(nullable=True)
 
+    cover: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    cover_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     hatchet_run_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -368,13 +371,21 @@ class EpisodeTaskInput(EpisodeCreate):
     podcast_id: int
 
 
-class EpisodeResearchResult(BaseModel):
+# Research
+class EpisodeResearchOutput(BaseModel):
     result: str
     usage: dict[str, Any]
 
 
+# Compose
 class EpisodeComposeResult(BaseModel):
-    result: str
+    title: str
+    summary: str
+    transcript: str
+
+
+class EpisodeComposeOutput(BaseModel):
+    result: EpisodeComposeResult
     usage: dict[str, Any]
 
 
@@ -384,10 +395,33 @@ class EpisodeComposeResponse(BaseModel):
     script: str
 
 
+# Voice
 class EpisodeVoiceResult(BaseModel):
-    result: dict[str, Any]
+    file_name: str
+    duration: int
+
+
+class EpisodeVoiceOutput(BaseModel):
+    result: EpisodeVoiceResult
     usage: dict[str, Any]
 
 
+# Cover
+class EpisodeCoverResult(BaseModel):
+    art: str
+    description: str
+
+
+class EpisodeCoverOutput(BaseModel):
+    result: EpisodeCoverResult
+    usage: dict[str, Any]
+
+
+class EpisodeCoverResponse(BaseModel):
+    art: str
+    description: str
+
+
+# Failure
 class EpisodeTaskFailure(BaseModel):
     error: dict[str, str]

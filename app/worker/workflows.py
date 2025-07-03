@@ -15,12 +15,17 @@ from app.core.storage import Minio, minio_bucket, minio_client
 from app.models import (
     Episode,
     EpisodeAudio,
+    EpisodeComposeOutput,
     EpisodeComposeResponse,
     EpisodeComposeResult,
     EpisodeContent,
-    EpisodeResearchResult,
+    EpisodeCoverOutput,
+    EpisodeCoverResponse,
+    EpisodeCoverResult,
+    EpisodeResearchOutput,
     EpisodeTaskFailure,
     EpisodeTaskInput,
+    EpisodeVoiceOutput,
     EpisodeVoiceResult,
 )
 from app.worker import prompts, tools
@@ -35,7 +40,7 @@ gemini_tts_model = settings.gemini_tts_model
 
 
 @podcast_generation.task()
-async def research(input: EpisodeTaskInput, ctx: Context) -> EpisodeResearchResult:
+async def research(input: EpisodeTaskInput, ctx: Context) -> EpisodeResearchOutput:
     # Update db status
     async with async_session() as session:
         episode = await session.get(Episode, input.id)
@@ -59,13 +64,13 @@ async def research(input: EpisodeTaskInput, ctx: Context) -> EpisodeResearchResu
             ),
         )
 
-    return EpisodeResearchResult(result=response.text, usage=response.usage_metadata.model_dump())
+    return EpisodeResearchOutput(result=response.text, usage=response.usage_metadata.model_dump())
 
 
 @podcast_generation.task(parents=[research])
-async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeResult:
+async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput:
     # Get output
-    research_output = EpisodeResearchResult.model_validate(ctx.task_output(research))
+    research_output = EpisodeResearchOutput.model_validate(ctx.task_output(research))
 
     # Update db status
     async with async_session() as session:
@@ -77,43 +82,46 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeResult
         await session.commit()
         await session.refresh(episode)
 
-        # Generate transcript
-        response = await gemini_client.aio.models.generate_content(
-            model=gemini_model,
-            contents=[
-                prompts.compose_system,
-                Template(prompts.compose_user).substitute(
-                    input.model_dump(), research_result=research_output.result
-                ),
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=EpisodeComposeResponse,
+    # Generate transcript
+    response = await gemini_client.aio.models.generate_content(
+        model=gemini_model,
+        contents=[
+            prompts.compose_system,
+            Template(prompts.compose_user).substitute(
+                input.model_dump(), research_result=research_output.result
             ),
-        )
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=EpisodeComposeResponse,
+        ),
+    )
 
-        result = EpisodeComposeResponse.model_validate_json(response.text)
+    result = EpisodeComposeResponse.model_validate_json(response.text)
 
-        # Update db transcript
-        episode.content = EpisodeContent(
-            title=result.title, summary=result.summary, transcript=result.script
-        )
-        session.add(episode)
-        await session.commit()
-
-    return EpisodeComposeResult(result=result.script, usage=response.usage_metadata.model_dump())
+    return EpisodeComposeOutput(
+        result=EpisodeComposeResult(
+            title=result.title, summary=result.summary, script=result.script
+        ),
+        usage=response.usage_metadata.model_dump(),
+    )
 
 
 @podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
 async def voice(input: EpisodeTaskInput, ctx: Context):
     # Get output
-    compose_output = EpisodeComposeResult.model_validate(ctx.task_output(compose))
+    compose_output = EpisodeComposeOutput.model_validate(ctx.task_output(compose))
 
     # Update db status
     async with async_session() as session:
         episode = await session.get(Episode, input.id)
         if not episode:
             raise Exception("Episode not found")
+        episode.content = EpisodeContent(
+            title=compose_output.result.title,
+            summary=compose_output.result.summary,
+            transcript=compose_output.result.script,
+        )
         episode.step = "voice"
         session.add(episode)
         await session.commit()
@@ -163,25 +171,68 @@ async def voice(input: EpisodeTaskInput, ctx: Context):
         buffer.close()
         buffer = None
 
-    return EpisodeVoiceResult(
-        result={"file_name": name, "duration": duration}, usage=response.usage_metadata.model_dump()
+    return EpisodeVoiceOutput(
+        result=EpisodeVoiceResult(file_name=name, duration=duration),
+        usage=response.usage_metadata.model_dump(),
     )
 
 
-@podcast_generation.on_success_task()
-async def handle_success(input: EpisodeTaskInput, ctx: Context):
-    voice_output = EpisodeVoiceResult.model_validate(ctx.task_output(voice))
+@podcast_generation.task(parents=[compose, voice])
+async def cover(input: EpisodeTaskInput, ctx: Context) -> EpisodeCoverOutput:
+    # Get output
+    compose_output = EpisodeComposeOutput.model_validate(ctx.task_output(compose))
+    voice_output = EpisodeVoiceOutput.model_validate(ctx.task_output(voice))
 
     # Update db status
     async with async_session() as session:
         episode = await session.get(Episode, input.id)
         if not episode:
             raise Exception("Episode not found")
+
+        episode.audio = EpisodeAudio(
+            file_name=voice_output.result.file_name, duration=voice_output.result.duration
+        )
+        episode.step = "cover"
+        session.add(episode)
+        await session.commit()
+
+    # Generate cover
+    response = await gemini_client.aio.models.generate_content(
+        model=gemini_model,
+        contents=[
+            prompts.cover_system,
+            Template(prompts.cover_user).substitute(
+                title=compose_output.result.title, summary=compose_output.result.summary
+            ),
+        ],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=EpisodeCoverResponse,
+        ),
+    )
+
+    result = EpisodeCoverResponse.model_validate_json(response.text)
+
+    return EpisodeCoverOutput(
+        result=EpisodeCoverResult(art=result.art, description=result.description),
+        usage=response.usage_metadata.model_dump(),
+    )
+
+
+@podcast_generation.on_success_task()
+async def handle_success(input: EpisodeTaskInput, ctx: Context):
+    cover_output = EpisodeCoverOutput.model_validate(ctx.task_output(cover))
+
+    # Update db status
+    async with async_session() as session:
+        episode = await session.get(Episode, input.id)
+        if not episode:
+            raise Exception("Episode not found")
+
+        episode.cover = cover_output.result.art
+        episode.cover_description = cover_output.result.description
         episode.step = None
         episode.status = "completed"
-        episode.audio = EpisodeAudio(
-            file_name=voice_output.result["file_name"], duration=voice_output.result["duration"]
-        )
         session.add(episode)
         await session.commit()
 
