@@ -13,7 +13,7 @@ Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["narrative", "conversational"]
 Voice = Literal["male", "female"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
-Step = Literal["research", "compose", "cover", "voice"]
+Step = Literal["research", "compose", "voice"]
 
 
 # Tables
@@ -37,7 +37,7 @@ class Base(DeclarativeBase):
         Status: sqlalchemy.Enum(
             "pending", "active", "completed", "cancelled", "failed", name="status"
         ),
-        Step: sqlalchemy.Enum("research", "compose", "cover", "voice", name="step"),
+        Step: sqlalchemy.Enum("research", "compose", "voice", name="step"),
     }
 
 
@@ -125,9 +125,6 @@ class Episode(Base):
     instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[Status] = mapped_column(default="pending")
     step: Mapped[Optional[Step]] = mapped_column(nullable=True)
-
-    cover: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    cover_description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     hatchet_run_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
