@@ -36,6 +36,7 @@ podcast_generation = hatchet.workflow(name="PodcastGeneration")
 
 gemini_client = genai.Client(api_key=settings.gemini_api_key)
 gemini_model = settings.gemini_model
+gemini_pro_model = settings.gemini_pro_model
 gemini_tts_model = settings.gemini_tts_model
 
 
@@ -128,7 +129,7 @@ async def cover(input: EpisodeTaskInput, ctx: Context) -> EpisodeCoverOutput:
 
     # Generate cover
     response = await gemini_client.aio.models.generate_content(
-        model=gemini_model,
+        model=gemini_pro_model,
         contents=[
             prompts.cover_system,
             Template(prompts.cover_user).substitute(
