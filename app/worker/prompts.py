@@ -132,32 +132,3 @@ Generate the title, summary and script based on the below podcast request and re
 2. Research document:
 $research_result
 """
-
-cover_system = """
-You are an artist specializing in creating podcast cover. You will be provided with a podcast title and summary.
-
-Your task is to generate an ASCII style podcast cover and an accompanying short description
-
-YOUR INPUT
-1. Title: a concise and relevant title for the podcast episode.
-2. Summary: a compelling single paragraph that previews what listeners can expect from the episode
-
-OUTPUT STRUCTURE
-A valid JSON object with the following fields:
-    * art: a single string containing all the characters for your ascii art
-        * Must be exactly 8 lines tall.
-        * Each line must be exactly 16 characters wide and separated by a new line character.
-        * Must only use the characters 0 for background and 1 for foreground.
-        * Must be a simple, abstract representation of the provided topic.
-    * description: a brief, one-sentence explaining how the art represent the provided topic
-"""
-
-cover_user = """
-Generate the ASCII podcast cover based on the below title and summary:
-
-1. Title:
-$title
-
-2. Sumary:
-$summary
-"""

@@ -19,9 +19,6 @@ from app.models import (
     EpisodeComposeResponse,
     EpisodeComposeResult,
     EpisodeContent,
-    EpisodeCoverOutput,
-    EpisodeCoverResponse,
-    EpisodeCoverResult,
     EpisodeResearchOutput,
     EpisodeTaskFailure,
     EpisodeTaskInput,
@@ -108,8 +105,8 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput
     )
 
 
-@podcast_generation.task(parents=[compose])
-async def cover(input: EpisodeTaskInput, ctx: Context) -> EpisodeCoverOutput:
+@podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
+async def voice(input: EpisodeTaskInput, ctx: Context):
     # Get output
     compose_output = EpisodeComposeOutput.model_validate(ctx.task_output(compose))
 
@@ -123,46 +120,6 @@ async def cover(input: EpisodeTaskInput, ctx: Context) -> EpisodeCoverOutput:
             summary=compose_output.result.summary,
             transcript=compose_output.result.transcript,
         )
-        episode.step = "cover"
-        session.add(episode)
-        await session.commit()
-
-    # Generate cover
-    response = await gemini_client.aio.models.generate_content(
-        model=gemini_pro_model,
-        contents=[
-            prompts.cover_system,
-            Template(prompts.cover_user).substitute(
-                title=compose_output.result.title, summary=compose_output.result.summary
-            ),
-        ],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=EpisodeCoverResponse,
-        ),
-    )
-
-    result = EpisodeCoverResponse.model_validate_json(response.text)
-
-    return EpisodeCoverOutput(
-        result=EpisodeCoverResult(art=result.art, description=result.description),
-        usage=response.usage_metadata.model_dump(),
-    )
-
-
-@podcast_generation.task(parents=[compose, cover], execution_timeout=timedelta(minutes=5))
-async def voice(input: EpisodeTaskInput, ctx: Context):
-    # Get output
-    compose_output = EpisodeComposeOutput.model_validate(ctx.task_output(compose))
-    cover_output = EpisodeCoverOutput.model_validate(ctx.task_output(cover))
-
-    # Update db status
-    async with async_session() as session:
-        episode = await session.get(Episode, input.id)
-        if not episode:
-            raise Exception("Episode not found")
-        episode.cover = cover_output.result.art
-        episode.cover_description = cover_output.result.description
         episode.step = "voice"
         session.add(episode)
         await session.commit()

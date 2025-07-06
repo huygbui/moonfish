@@ -236,9 +236,6 @@ class EpisodeResult(BaseModel):
     voice2: Voice | None = None
     name2: str | None = None
 
-    cover: str | None = None
-    cover_description: str | None = None
-
     status: Status | None = None
     step: Step | None = None
 
@@ -301,6 +298,7 @@ class PodcastResult(PodcastCreate):
     updated_at: datetime
 
     image_url: str | None = None
+    image_upload_url: str | None = None
 
 
 class PodcastUpdateResult(PodcastResult):
@@ -382,22 +380,6 @@ class EpisodeVoiceResult(BaseModel):
 class EpisodeVoiceOutput(BaseModel):
     result: EpisodeVoiceResult
     usage: dict[str, Any]
-
-
-# Cover
-class EpisodeCoverResult(BaseModel):
-    art: str
-    description: str
-
-
-class EpisodeCoverOutput(BaseModel):
-    result: EpisodeCoverResult
-    usage: dict[str, Any]
-
-
-class EpisodeCoverResponse(BaseModel):
-    art: str
-    description: str
 
 
 # Failure
