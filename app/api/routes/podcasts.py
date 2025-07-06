@@ -32,9 +32,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent) -> list[Podca
     return [
         PodcastResult(
             **podcast.to_dict(),
-            image_url=get_presigned_url(
-                f"{podcast.id}/{podcast.id}.jpg", duration=48, check_exists=False
-            ),
+            image_url=get_presigned_get_url(f"{podcast.id}/{podcast.id}.jpg", duration=48),
         )
         for podcast in podcasts
     ]
@@ -53,9 +51,8 @@ async def create_podcast(
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_upload_url=get_presigned_url(
-            f"{podcast.id}/{podcast.id}.jpg", duration=1, check_exists=False
-        ),
+        image_upload_url=get_presigned_put_url(f"{podcast.id}/{podcast.id}.jpg", duration=1),
+        image_url=get_presigned_get_url(f"{podcast.id}/{podcast.id}.jpg", check_exists=False),
     )
 
 
@@ -67,9 +64,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_url=get_presigned_url(
-            f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
-        ),
+        image_url=get_presigned_get_url(f"{podcast_id}/{podcast_id}.jpg"),
     )
 
 
@@ -83,35 +78,26 @@ async def update_podcast(
         podcast = await session.get(Podcast, podcast_id)
         if not podcast or podcast.user_id != user.id:
             raise HTTPException(status_code=404, detail="Podcast not found")
-
-        return PodcastResult(
-            **podcast.to_dict(),
-            image_url=get_presigned_url(
-                f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
-            ),
+    else:
+        stmt = (
+            update(Podcast)
+            .where(Podcast.id == podcast_id)
+            .where(Podcast.user_id == user.id)
+            .values(**update_data)
+            .returning(Podcast)
         )
+        result = await session.execute(stmt)
+        podcast = result.scalar_one_or_none()
 
-    stmt = (
-        update(Podcast)
-        .where(Podcast.id == podcast_id)
-        .where(Podcast.user_id == user.id)
-        .values(**update_data)
-        .returning(Podcast)
-    )
+        if not podcast:
+            raise HTTPException(status_code=404, detail="Podcast not found")
 
-    result = await session.execute(stmt)
-    podcast = result.scalar_one_or_none()
-
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    await session.commit()
+        await session.commit()
 
     return PodcastUpdateResult(
         **podcast.to_dict(),
-        image_url=get_presigned_url(
-            f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
-        ),
+        image_upload_url=get_presigned_put_url(f"{podcast_id}/{podcast_id}.jpg"),
+        image_url=get_presigned_get_url(f"{podcast_id}/{podcast_id}.jpg", check_exists=False),
     )
 
 
@@ -222,12 +208,21 @@ async def create_podcast_episode(
     return episode
 
 
-def get_presigned_url(object_name: str, duration=48, check_exists=True) -> str | None:
+def get_presigned_get_url(object_name: str, duration=48, check_exists=True) -> str | None:
     try:
         if check_exists:
             minio_client.stat_object(bucket_name=minio_bucket, object_name=object_name)
 
         return minio_client.presigned_get_object(
+            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=duration)
+        )
+    except Exception:
+        return None
+
+
+def get_presigned_put_url(object_name: str, duration=1) -> str | None:
+    try:
+        return minio_client.presigned_put_object(
             bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=duration)
         )
     except Exception:
