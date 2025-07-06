@@ -14,7 +14,6 @@ from app.models import (
     EpisodeTaskInput,
     Podcast,
     PodcastCreate,
-    PodcastImageUploadURLResult,
     PodcastResult,
     PodcastUpdate,
     PodcastUpdateResult,
@@ -33,7 +32,9 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent) -> list[Podca
     return [
         PodcastResult(
             **podcast.to_dict(),
-            image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+            image_url=get_presigned_url(
+                f"{podcast.id}/{podcast.id}.jpg", duration=48, check_exists=False
+            ),
         )
         for podcast in podcasts
     ]
@@ -50,44 +51,25 @@ async def create_podcast(
     await session.commit()
     await session.refresh(podcast)
 
-    return podcast
-
-
-@router.post("/{podcast_id}/image_upload", response_model=PodcastImageUploadURLResult)
-async def create_image_upload_url(
-    podcast_id: int, user: UserCurrent, session: SessionCurrent
-) -> PodcastImageUploadURLResult:
-    podcast = await session.get(Podcast, podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    if podcast.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    file_name = f"{podcast_id}/{podcast_id}.jpg"
-
-    upload_url = minio_client.presigned_put_object(
-        bucket_name=minio_bucket, object_name=file_name, expires=timedelta(hours=1)
+    return PodcastResult(
+        **podcast.to_dict(),
+        image_upload_url=get_presigned_url(
+            f"{podcast.id}/{podcast.id}.jpg", duration=1, check_exists=False
+        ),
     )
-
-    podcast.image_path = file_name
-    await session.commit()
-
-    return PodcastImageUploadURLResult(url=upload_url)
 
 
 @router.get("/{podcast_id}", response_model=PodcastResult)
 async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurrent):
     podcast = await session.get(Podcast, podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    if podcast.user_id != user.id:
+    if not podcast or podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+        image_url=get_presigned_url(
+            f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
+        ),
     )
 
 
@@ -98,13 +80,15 @@ async def update_podcast(
     update_data = req.model_dump(exclude_unset=True)
 
     if not update_data:
-        stmt = select(Podcast).where(Podcast.id == podcast_id, Podcast.user_id == user.id)
-        podcast = await session.scalar(stmt)
-        if not podcast:
+        podcast = await session.get(Podcast, podcast_id)
+        if not podcast or podcast.user_id != user.id:
             raise HTTPException(status_code=404, detail="Podcast not found")
+
         return PodcastResult(
             **podcast.to_dict(),
-            image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+            image_url=get_presigned_url(
+                f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
+            ),
         )
 
     stmt = (
@@ -123,9 +107,11 @@ async def update_podcast(
 
     await session.commit()
 
-    return PodcastResult(
+    return PodcastUpdateResult(
         **podcast.to_dict(),
-        image_url=get_presigned_url(podcast.image_path) if podcast.image_path else None,
+        image_url=get_presigned_url(
+            f"{podcast_id}/{podcast_id}.jpg", duration=48, check_exists=True
+        ),
     )
 
 
@@ -236,10 +222,13 @@ async def create_podcast_episode(
     return episode
 
 
-def get_presigned_url(object_name: str) -> str | None:
+def get_presigned_url(object_name: str, duration=48, check_exists=True) -> str | None:
     try:
+        if check_exists:
+            minio_client.stat_object(bucket_name=minio_bucket, object_name=object_name)
+
         return minio_client.presigned_get_object(
-            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=48)
+            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=duration)
         )
     except Exception:
         return None
