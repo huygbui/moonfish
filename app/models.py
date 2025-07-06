@@ -119,9 +119,7 @@ class Episode(Base):
     level: Mapped[Level]
     format: Mapped[Format]
     voice1: Mapped[Voice]
-    name1: Mapped[str] = mapped_column(String, nullable=True)
     voice2: Mapped[Optional[Voice]] = mapped_column(nullable=True)
-    name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     instruction: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[Status] = mapped_column(default="pending")
     step: Mapped[Optional[Step]] = mapped_column(nullable=True)
@@ -171,9 +169,7 @@ class Podcast(Base):
     title: Mapped[str] = mapped_column(String)
     format: Mapped[Format]
     voice1: Mapped[Voice]
-    name1: Mapped[str] = mapped_column(String, nullable=True)
     voice2: Mapped[Optional[Voice]] = mapped_column(nullable=True)
-    name2: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     image_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -232,9 +228,7 @@ class EpisodeResult(BaseModel):
 
     format: Format
     voice1: Voice
-    name1: str
     voice2: Voice | None = None
-    name2: str | None = None
 
     status: Status | None = None
     step: Step | None = None
@@ -271,9 +265,7 @@ class PodcastCreate(BaseModel):
     format: Format
 
     voice1: Voice
-    name1: str
     voice2: Voice | None = None
-    name2: str | None = None
 
     description: str | None = None
 
@@ -284,9 +276,7 @@ class PodcastUpdate(PodcastCreate):
     format: Format | None = None
 
     voice1: Voice | None = None
-    name1: str | None = None
     voice2: Voice | None = None
-    name2: str | None = None
 
     description: str | None = None
 
@@ -340,9 +330,7 @@ class EpisodeTaskInput(EpisodeCreate):
     id: int
     format: Format
     voice1: Voice
-    name1: str
     voice2: Voice | None = None
-    name2: str | None = None
 
     podcast_id: int
 

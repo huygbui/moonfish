@@ -187,9 +187,7 @@ async def create_podcast_episode(
         **req.model_dump(),
         format=podcast.format,
         voice1=podcast.voice1,
-        name1=podcast.name1,
         voice2=podcast.voice2,
-        name2=podcast.name2,
         user_id=user.id,
         podcast_id=podcast_id,
     )
