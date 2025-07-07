@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
-from app.core.storage import S3Error, minio_bucket, minio_client
+from app.core.storage import S3Error, get_download_url, get_public_url, minio_bucket, minio_client
 from app.models import (
     Episode,
     EpisodeAudio,
@@ -133,10 +133,9 @@ async def get_episode_audio(episode_id: int, user: UserCurrent, session: Session
         expires_duration = timedelta(hours=48)
         expires_at = datetime.now(UTC) + expires_duration
 
-        # Generate presigned URL valid for 1 hour
-        url = minio_client.presigned_get_object(
-            bucket_name=minio_bucket, object_name=audio.file_name, expires=expires_duration
-        )
+        # Get public URL valid for 1 hour
+        url = get_public_url(audio.file_name)
+        expires_at = datetime.max.replace(tzinfo=UTC)  # Far future date
         return EpisodeAudioResult(url=url, expires_at=expires_at)
 
     except S3Error as e:
@@ -163,19 +162,12 @@ async def download_episode_audio(episode_id: int, user: UserCurrent, session: Se
 
     try:
         _ = minio_client.stat_object(minio_bucket, audio.file_name)
-
-        url = minio_client.presigned_get_object(
-            bucket_name=minio_bucket,
-            object_name=audio.file_name,
-            expires=timedelta(minutes=15),
-        )
-
+        url = get_download_url(audio.file_name)
         return RedirectResponse(url=url, status_code=307)
 
     except S3Error as e:
         if e.code == "NoSuchKey":
             raise HTTPException(status_code=404, detail="Episode audio not found")
-        # You can add more specific S3 error handling here if needed
         raise HTTPException(status_code=500, detail=f"Storage error: {e.code}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

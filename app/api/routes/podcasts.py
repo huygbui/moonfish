@@ -1,12 +1,18 @@
 from collections import deque
-from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
-from app.core.storage import DeleteObject, S3Error, minio_bucket, minio_client, get_presigned_get_url, get_presigned_put_url
+from app.core.storage import (
+    DeleteObject,
+    S3Error,
+    get_public_url,
+    get_upload_url,
+    minio_bucket,
+    minio_client,
+)
 from app.models import (
     Episode,
     EpisodeCreate,
@@ -32,7 +38,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent) -> list[Podca
     return [
         PodcastResult(
             **podcast.to_dict(),
-            image_url=get_presigned_get_url(f"{podcast.id}/{podcast.id}.jpg", duration=48),
+            image_url=get_public_url(f"{podcast.id}/{podcast.id}.jpg"),
         )
         for podcast in podcasts
     ]
@@ -51,8 +57,8 @@ async def create_podcast(
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_upload_url=get_presigned_put_url(f"{podcast.id}/{podcast.id}.jpg", duration=1),
-        image_url=get_presigned_get_url(f"{podcast.id}/{podcast.id}.jpg", check_exists=False),
+        image_upload_url=get_upload_url(f"{podcast.id}/{podcast.id}.jpg"),
+        image_url=get_public_url(f"{podcast.id}/{podcast.id}.jpg"),
     )
 
 
@@ -64,7 +70,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_url=get_presigned_get_url(f"{podcast_id}/{podcast_id}.jpg"),
+        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg"),
     )
 
 
@@ -96,8 +102,8 @@ async def update_podcast(
 
     return PodcastUpdateResult(
         **podcast.to_dict(),
-        image_upload_url=get_presigned_put_url(f"{podcast_id}/{podcast_id}.jpg"),
-        image_url=get_presigned_get_url(f"{podcast_id}/{podcast_id}.jpg", check_exists=False),
+        image_upload_url=get_upload_url(f"{podcast_id}/{podcast_id}.jpg"),
+        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg", check_exists=False),
     )
 
 
