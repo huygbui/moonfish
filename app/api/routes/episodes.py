@@ -44,31 +44,6 @@ async def get_episodes(user: UserCurrent, session: SessionCurrent):
     ]
 
 
-@router.get("/completed", response_model=list[EpisodeResult])
-async def get_completed_episodes(user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(Episode)
-        .where(Episode.user_id == user.id)
-        .where(Episode.status.in_(["completed"]))
-        .options(
-            joinedload(Episode.audio),
-            joinedload(Episode.content),
-        )
-    )
-    result = await session.execute(stmt)
-    episodes = result.scalars().unique().all()
-    return [
-        EpisodeResult(
-            **episode.to_dict(),
-            title=episode.content.title if episode.content else None,
-            summary=episode.content.summary if episode.content else None,
-            file_name=episode.audio.file_name if episode.audio else None,
-            duration=episode.audio.duration if episode.audio else None,
-        )
-        for episode in episodes
-    ]
-
-
 @router.delete("/{episode_id}")
 async def delete_episode(episode_id: int, user: UserCurrent, session: SessionCurrent):
     episode = await session.get(Episode, episode_id)
