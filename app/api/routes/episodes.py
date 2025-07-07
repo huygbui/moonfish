@@ -1,5 +1,3 @@
-from datetime import UTC, datetime, timedelta
-
 from fastapi import APIRouter, HTTPException, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -126,23 +124,12 @@ async def get_episode_audio(episode_id: int, user: UserCurrent, session: Session
     if not audio:
         raise HTTPException(status_code=404, detail="Episode content not found")
 
-    try:
-        _ = minio_client.stat_object(minio_bucket, audio.file_name)
+    # Get public URL
+    url = get_public_url(audio.file_name)
+    return EpisodeAudioResult(url=url)
 
-        # Define expiration
-        expires_duration = timedelta(hours=48)
-        expires_at = datetime.now(UTC) + expires_duration
-
-        # Get public URL valid for 1 hour
-        url = get_public_url(audio.file_name)
-        expires_at = datetime.max.replace(tzinfo=UTC)  # Far future date
-        return EpisodeAudioResult(url=url, expires_at=expires_at)
-
-    except S3Error as e:
-        if e.code == "NoSuchKey":
-            raise HTTPException(status_code=404, detail="Episode audio not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    if not url:
+        raise HTTPException(status_code=404, detail="Episode audio not found")
 
 
 @router.get("/{episode_id}/download")

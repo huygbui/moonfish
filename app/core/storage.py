@@ -17,17 +17,20 @@ S3Error = S3Error
 DeleteObject = DeleteObject
 
 
-def get_public_url(object_name: str) -> str | None:
+def get_public_url(object_name: str, check_exists=True) -> str | None:
     """Generate permanent public URL"""
     protocol = "https" if settings.environment != "development" else "http"
     base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
-    try:
-        stat = minio_client.stat_object(minio_bucket, object_name)
-        etag = stat.etag.strip('"')  # Remove quotes from ETag
-        cache_buster = etag[:8]
-        return f"{base_url}?v={cache_buster}"
-    except Exception:
-        return None
+    if check_exists:
+        try:
+            stat = minio_client.stat_object(minio_bucket, object_name)
+            etag = stat.etag.strip('"')  # Remove quotes from ETag
+            cache_buster = etag[:8]
+            return f"{base_url}?v={cache_buster}"
+        except Exception:
+            return None
+    else:
+        return base_url
 
 
 def get_upload_url(object_name: str, duration: int = 1) -> str | None:

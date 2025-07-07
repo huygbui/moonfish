@@ -255,7 +255,6 @@ class EpisodeContentResult(BaseModel):
 
 class EpisodeAudioResult(BaseModel):
     url: str
-    expires_at: datetime
 
 
 # Podcast
