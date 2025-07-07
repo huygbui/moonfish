@@ -6,7 +6,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
-from app.core.storage import DeleteObject, S3Error, minio_bucket, minio_client
+from app.core.storage import DeleteObject, S3Error, minio_bucket, minio_client, get_presigned_get_url, get_presigned_put_url
 from app.models import (
     Episode,
     EpisodeCreate,
@@ -204,24 +204,3 @@ async def create_podcast_episode(
         raise HTTPException(status_code=500, detail="Episode generation failed")
 
     return episode
-
-
-def get_presigned_get_url(object_name: str, duration=48, check_exists=True) -> str | None:
-    try:
-        if check_exists:
-            minio_client.stat_object(bucket_name=minio_bucket, object_name=object_name)
-
-        return minio_client.presigned_get_object(
-            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=duration)
-        )
-    except Exception:
-        return None
-
-
-def get_presigned_put_url(object_name: str, duration=1) -> str | None:
-    try:
-        return minio_client.presigned_put_object(
-            bucket_name=minio_bucket, object_name=object_name, expires=timedelta(hours=duration)
-        )
-    except Exception:
-        return None
