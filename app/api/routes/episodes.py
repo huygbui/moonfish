@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
-from app.core.storage import S3Error, get_download_url, get_public_url, minio_bucket, minio_client
+from app.core.storage import S3Error, get_public_url, minio_bucket, minio_client
 from app.models import (
     Episode,
     EpisodeAudio,
@@ -162,7 +162,7 @@ async def download_episode_audio(episode_id: int, user: UserCurrent, session: Se
 
     try:
         _ = minio_client.stat_object(minio_bucket, audio.file_name)
-        url = get_download_url(audio.file_name)
+        url = get_public_url(audio.file_name)
         return RedirectResponse(url=url, status_code=307)
 
     except S3Error as e:
