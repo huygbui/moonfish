@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from minio import Minio, S3Error
 from minio.deleteobjects import DeleteObject
@@ -17,10 +17,12 @@ S3Error = S3Error
 DeleteObject = DeleteObject
 
 
-def get_public_url(object_name: str) -> str | None:
-    """Generate permanent public URL"""
+def get_public_url(object_name: str, updated_at: datetime) -> str | None:
+    """Generate permanent public URL with versioning"""
     protocol = "https" if settings.environment != "development" else "http"
-    return f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
+    base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
+    version = int(updated_at.timestamp())
+    return f"{base_url}?v={version}"
 
 
 def get_upload_url(object_name: str, duration: int = 1) -> str | None:
