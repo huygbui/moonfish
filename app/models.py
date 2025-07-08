@@ -182,6 +182,8 @@ class Podcast(Base):
         onupdate=func.now(),
     )
 
+    thumbnail_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"),
         index=True,
