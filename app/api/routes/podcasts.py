@@ -103,7 +103,7 @@ async def update_podcast(
     return PodcastUpdateResult(
         **podcast.to_dict(),
         image_upload_url=get_upload_url(f"{podcast_id}/{podcast_id}.jpg"),
-        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg", check_exists=False),
+        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg"),
     )
 
 
