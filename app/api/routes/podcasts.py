@@ -1,4 +1,4 @@
-from collections import deque
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select, update
@@ -39,7 +39,7 @@ async def get_podcasts(user: UserCurrent, session: SessionCurrent) -> list[Podca
         PodcastResult(
             **podcast.to_dict(),
             image_url=get_public_url(
-                f"{podcast.id}/{podcast.id}.jpg", updated_at=podcast.updated_at
+                f"{podcast.id}/{podcast.id}.jpg", updated_at=podcast.thumbnail_updated_at
             ),
         )
         for podcast in podcasts
@@ -60,7 +60,9 @@ async def create_podcast(
     return PodcastResult(
         **podcast.to_dict(),
         image_upload_url=get_upload_url(f"{podcast.id}/{podcast.id}.jpg"),
-        image_url=get_public_url(f"{podcast.id}/{podcast.id}.jpg", updated_at=podcast.updated_at),
+        image_url=get_public_url(
+            f"{podcast.id}/{podcast.id}.jpg", updated_at=podcast.thumbnail_updated_at
+        ),
     )
 
 
@@ -72,7 +74,9 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.updated_at),
+        image_url=get_public_url(
+            f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.thumbnail_updated_at
+        ),
     )
 
 
@@ -105,7 +109,9 @@ async def update_podcast(
     return PodcastUpdateResult(
         **podcast.to_dict(),
         image_upload_url=get_upload_url(f"{podcast_id}/{podcast_id}.jpg"),
-        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.updated_at),
+        image_url=get_public_url(
+            f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.thumbnail_updated_at
+        ),
     )
 
 
@@ -152,25 +158,21 @@ async def delete_podcast(podcast_id: int, user: UserCurrent, session: SessionCur
 
 @router.post("/{podcast_id}/upload_success")
 async def handle_upload_success(podcast_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        update(Podcast)
-        .where(Podcast.id == podcast_id)
-        .where(Podcast.user_id == user.id)
-        .values()
-        .returning(Podcast)
-    )
-    result = await session.execute(stmt)
-    podcast = result.scalar_one_or_none()
+    podcast = await session.get(Podcast, podcast_id)
 
-    if not podcast:
+    if not podcast or podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
+
+    podcast.thumbnail_updated_at = datetime.now(UTC)
 
     await session.commit()
     await session.refresh(podcast)
 
     return PodcastResult(
         **podcast.to_dict(),
-        image_url=get_public_url(f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.updated_at),
+        image_url=get_public_url(
+            f"{podcast_id}/{podcast_id}.jpg", updated_at=podcast.thumbnail_updated_at
+        ),
     )
 
 
