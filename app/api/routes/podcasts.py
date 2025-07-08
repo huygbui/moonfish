@@ -197,7 +197,7 @@ async def get_podcast_episodes(
             **episode.to_dict(),
             title=episode.content.title if episode.content else None,
             summary=episode.content.summary if episode.content else None,
-            file_name=episode.audio.file_name if episode.audio else None,
+            audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
             duration=episode.audio.duration if episode.audio else None,
         )
         for episode in episodes

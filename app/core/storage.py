@@ -17,7 +17,7 @@ S3Error = S3Error
 DeleteObject = DeleteObject
 
 
-def get_public_url(object_name: str, updated_at: datetime | None) -> str | None:
+def get_public_url(object_name: str, updated_at: datetime | None = None) -> str | None:
     """Generate permanent public URL with versioning"""
     protocol = "https" if settings.environment != "development" else "http"
     base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"

@@ -8,7 +8,6 @@ from app.core.storage import S3Error, get_public_url, minio_bucket, minio_client
 from app.models import (
     Episode,
     EpisodeAudio,
-    EpisodeAudioResult,
     EpisodeContent,
     EpisodeContentResult,
     EpisodeResult,
@@ -35,7 +34,7 @@ async def get_episodes(user: UserCurrent, session: SessionCurrent):
             **episode.to_dict(),
             title=episode.content.title if episode.content else None,
             summary=episode.content.summary if episode.content else None,
-            file_name=episode.audio.file_name if episode.audio else None,
+            audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
             duration=episode.audio.duration if episode.audio else None,
         )
         for episode in episodes
@@ -86,7 +85,7 @@ async def get_episode(episode_id: int, user: UserCurrent, session: SessionCurren
         **episode.to_dict(),
         title=episode.content.title if episode.content else None,
         summary=episode.content.summary if episode.content else None,
-        file_name=episode.audio.file_name if episode.audio else None,
+        audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
         duration=episode.audio.duration if episode.audio else None,
     )
 
@@ -107,29 +106,6 @@ async def get_episode_content(episode_id: int, user: UserCurrent, session: Sessi
         raise HTTPException(status_code=404, detail="Episode content not found")
 
     return content
-
-
-@router.get("/{episode_id}/audio", response_model=EpisodeAudioResult)
-async def get_episode_audio(episode_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(EpisodeAudio)
-        .join(EpisodeAudio.episode)
-        .where(EpisodeAudio.episode_id == episode_id)
-        .where(Episode.user_id == user.id)
-    )
-
-    result = await session.execute(stmt)
-    audio = result.scalar_one_or_none()
-
-    if not audio:
-        raise HTTPException(status_code=404, detail="Episode content not found")
-
-    # Get public URL
-    url = get_public_url(audio.file_name)
-    return EpisodeAudioResult(url=url)
-
-    if not url:
-        raise HTTPException(status_code=404, detail="Episode audio not found")
 
 
 @router.get("/{episode_id}/download")

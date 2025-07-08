@@ -238,7 +238,7 @@ class EpisodeResult(BaseModel):
 
     title: str | None = None
     summary: str | None = None
-    file_name: str | None = None
+    audio_url: str | None = None
     duration: int | None = None
 
 
