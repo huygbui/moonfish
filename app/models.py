@@ -86,30 +86,6 @@ class EpisodeContent(Base):
     episode: Mapped["Episode"] = relationship("Episode", back_populates="content")
 
 
-class EpisodeAudio(Base):
-    __tablename__ = "episode_audio"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    file_name: Mapped[str] = mapped_column(String)
-    duration: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
-    episode_id: Mapped[int] = mapped_column(
-        ForeignKey("episode.id", ondelete="CASCADE"),
-        index=True,
-    )
-
-    episode: Mapped["Episode"] = relationship("Episode", back_populates="audio")
-
-
 class Episode(Base):
     __tablename__ = "episode"
 
@@ -155,11 +131,6 @@ class Episode(Base):
         "EpisodeContent",
         back_populates="episode",
         cascade="all, delete-orphan",  # Delete content when episode is deleted
-    )
-    audio: Mapped[Optional["EpisodeAudio"]] = relationship(
-        "EpisodeAudio",
-        back_populates="episode",
-        cascade="all, delete-orphan",  # Delete audio when episode is deleted
     )
 
 

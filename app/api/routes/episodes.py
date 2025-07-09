@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Response
-from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -7,9 +6,6 @@ from app.api.deps import SessionCurrent, UserCurrent
 from app.core.storage import S3Error, get_public_url, minio_bucket, minio_client
 from app.models import (
     Episode,
-    EpisodeAudio,
-    EpisodeContent,
-    EpisodeContentResult,
     EpisodeResult,
 )
 from app.worker.hatchet_client import hatchet
@@ -19,14 +15,7 @@ router = APIRouter(prefix="/episodes", tags=["Episodes"])
 
 @router.get("", response_model=list[EpisodeResult])
 async def get_episodes(user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(Episode)
-        .where(Episode.user_id == user.id)
-        .options(
-            joinedload(Episode.audio),
-            joinedload(Episode.content),
-        )
-    )
+    stmt = select(Episode).where(Episode.user_id == user.id).options(joinedload(Episode.content))
     result = await session.execute(stmt)
     episodes = result.scalars().unique().all()
     return [
@@ -34,8 +23,7 @@ async def get_episodes(user: UserCurrent, session: SessionCurrent):
             **episode.to_dict(),
             title=episode.content.title if episode.content else None,
             summary=episode.content.summary if episode.content else None,
-            audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
-            duration=episode.audio.duration if episode.audio else None,
+            audio_url=get_public_url(f"{episode.podcast_id}/{episode.id}.mp3"),
         )
         for episode in episodes
     ]
@@ -44,14 +32,11 @@ async def get_episodes(user: UserCurrent, session: SessionCurrent):
 @router.delete("/{episode_id}")
 async def delete_episode(episode_id: int, user: UserCurrent, session: SessionCurrent):
     episode = await session.get(Episode, episode_id)
-    if not episode:
-        raise HTTPException(status_code=404, detail="Episode not found")
-
-    if episode.user_id != user.id:
+    if not episode or episode.user_id != user.id:
         raise HTTPException(status_code=404, detail="Episode not found")
 
     try:
-        minio_client.remove_object(minio_bucket, f"{episode_id}.mp3")
+        minio_client.remove_object(minio_bucket, f"{episode.podcast_id}/{episode.id}.mp3")
     except S3Error as e:
         if e.code == "NoSuchKey":
             pass
@@ -68,72 +53,17 @@ async def delete_episode(episode_id: int, user: UserCurrent, session: SessionCur
 
 @router.get("/{episode_id}", response_model=EpisodeResult)
 async def get_episode(episode_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(Episode)
-        .where(Episode.id == episode_id)
-        .where(Episode.user_id == user.id)
-        .options(joinedload(Episode.audio), joinedload(Episode.content))
-    )
+    episode = await session.get(Episode, episode_id)
 
-    result = await session.execute(stmt)
-    episode = result.unique().scalars().one_or_none()
-
-    if not episode:
+    if not episode or episode.user_id != user.id:
         raise HTTPException(status_code=404, detail="Episode not found")
 
     return EpisodeResult(
         **episode.to_dict(),
         title=episode.content.title if episode.content else None,
         summary=episode.content.summary if episode.content else None,
-        audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
-        duration=episode.audio.duration if episode.audio else None,
+        audio_url=get_public_url(f"{episode.podcast_id}/{episode.id}.mp3"),
     )
-
-
-@router.get("/{episode_id}/content", response_model=EpisodeContentResult)
-async def get_episode_content(episode_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(EpisodeContent)
-        .join(EpisodeContent.episode)
-        .where(EpisodeContent.episode_id == episode_id)
-        .where(Episode.user_id == user.id)
-    )
-
-    result = await session.execute(stmt)
-    content = result.scalar_one_or_none()
-
-    if not content:
-        raise HTTPException(status_code=404, detail="Episode content not found")
-
-    return content
-
-
-@router.get("/{episode_id}/download")
-async def download_episode_audio(episode_id: int, user: UserCurrent, session: SessionCurrent):
-    stmt = (
-        select(EpisodeAudio)
-        .join(EpisodeAudio.episode)
-        .where(EpisodeAudio.episode_id == episode_id)
-        .where(Episode.user_id == user.id)
-    )
-
-    result = await session.execute(stmt)
-    audio = result.scalar_one_or_none()
-
-    if not audio:
-        raise HTTPException(status_code=404, detail="Episode content not found")
-
-    try:
-        _ = minio_client.stat_object(minio_bucket, audio.file_name)
-        url = get_public_url(audio.file_name)
-        return RedirectResponse(url=url, status_code=307)
-
-    except S3Error as e:
-        if e.code == "NoSuchKey":
-            raise HTTPException(status_code=404, detail="Episode audio not found")
-        raise HTTPException(status_code=500, detail=f"Storage error: {e.code}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.post("/{episode_id}/cancel")

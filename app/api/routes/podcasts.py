@@ -185,10 +185,7 @@ async def get_podcast_episodes(
         select(Episode)
         .where(Episode.podcast_id == podcast_id)
         .where(Episode.user_id == user.id)
-        .options(
-            joinedload(Episode.audio),
-            joinedload(Episode.content),
-        )
+        .options(joinedload(Episode.content))
     )
     result = await session.execute(stmt)
     episodes = result.scalars().unique().all()
@@ -197,8 +194,7 @@ async def get_podcast_episodes(
             **episode.to_dict(),
             title=episode.content.title if episode.content else None,
             summary=episode.content.summary if episode.content else None,
-            audio_url=get_public_url(episode.audio.file_name) if episode.audio else None,
-            duration=episode.audio.duration if episode.audio else None,
+            audio_url=get_public_url(f"{podcast_id}/{episode.id}.mp3"),
         )
         for episode in episodes
     ]
@@ -212,10 +208,7 @@ async def create_podcast_episode(
     session: SessionCurrent,
 ):
     podcast = await session.get(Podcast, podcast_id)
-    if not podcast:
-        raise HTTPException(status_code=404, detail="Podcast not found")
-
-    if podcast.user_id != user.id:
+    if not podcast or podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
 
     episode = Episode(
