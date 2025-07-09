@@ -126,6 +126,8 @@ class Episode(Base):
 
     hatchet_run_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    duration: Mapped[int | None] = mapped_column(Integer)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
