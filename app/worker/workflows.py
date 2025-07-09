@@ -14,7 +14,6 @@ from app.core.database import async_session
 from app.core.storage import Minio, minio_bucket, minio_client
 from app.models import (
     Episode,
-    EpisodeAudio,
     EpisodeComposeOutput,
     EpisodeComposeResponse,
     EpisodeComposeResult,
@@ -184,10 +183,7 @@ async def handle_success(input: EpisodeTaskInput, ctx: Context):
         if not episode:
             raise Exception("Episode not found")
 
-        episode.audio = EpisodeAudio(
-            file_name=voice_output.result.file_name, duration=voice_output.result.duration
-        )
-
+        episode.duration = voice_output.result.duration
         episode.step = None
         episode.status = "completed"
         session.add(episode)
