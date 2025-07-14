@@ -8,7 +8,13 @@ router = APIRouter(prefix="/subscriptions", tags=["Subscriptions"])
 
 
 @router.get("", response_model=list[SubscriptionTierResult])
-async def get_subscription_tiers(session: SessionCurrent):
+async def get_all_tiers(session: SessionCurrent):
     result = await session.execute(select(SubscriptionTier))
-    tiers = result.scalars().all()
-    return tiers
+    return result.scalars().all()
+
+
+@router.get("/{tier}", response_model=SubscriptionTierResult)
+async def get_tier(tier: str, session: SessionCurrent):
+    stmt = select(SubscriptionTier).where(SubscriptionTier.tier == tier)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
