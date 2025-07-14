@@ -185,6 +185,15 @@ class Podcast(Base):
     )
 
 
+# Subscription
+class SubscriptionTierResult(BaseModel):
+    id: int
+    tier: Tier
+    max_podcasts: int
+    max_daily_episodes: int
+    max_daily_extended_episodes: int
+
+
 # User
 class UserBase(BaseModel):
     id: int
