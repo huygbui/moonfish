@@ -194,6 +194,12 @@ class SubscriptionTierResult(BaseModel):
     max_daily_extended_episodes: int
 
 
+class SubscriptionTierUpdate(BaseModel):
+    max_podcasts: int | None = None
+    max_daily_episodes: int | None = None
+    max_daily_extended_episodes: int | None = None
+
+
 # User
 class UserBase(BaseModel):
     id: int
