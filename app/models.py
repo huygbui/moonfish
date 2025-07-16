@@ -215,6 +215,14 @@ class UserUsageResult(BaseModel):
     daily_episodes: int
     daily_extended_episodes: int
 
+    max_podcasts: int
+    max_daily_episodes: int
+    max_daily_extended_episodes: int
+
+
+class UserTierUpdate(BaseModel):
+    tier: Tier
+
 
 # User
 class UserBase(BaseModel):
@@ -222,6 +230,7 @@ class UserBase(BaseModel):
     apple_id: str | None
     email: EmailStr | None
     name: str | None
+    subscription_tier_id: int
     created_at: datetime
 
 

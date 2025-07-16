@@ -47,11 +47,5 @@ async def apple_sign_in(request: AppleSignInRequest, session: SessionCurrent):
 
     return AuthResult(
         token=TokenResult(access_token=access_token),
-        user=UserResult(
-            id=user.id,
-            apple_id=user.apple_id,
-            email=user.email,
-            name=user.name,
-            created_at=user.created_at,
-        ),
+        user=UserResult(**user.to_dict()),
     )
