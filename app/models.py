@@ -56,6 +56,8 @@ class SubscriptionTier(Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
 
+    users: Mapped[list["User"]] = relationship("User", back_populates="subscription_tier")
+
 
 class User(Base):
     __tablename__ = "user"
@@ -66,6 +68,14 @@ class User(Base):
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
+
+    subscription_tier_id: Mapped[int] = mapped_column(
+        ForeignKey("subscription_tier.id"), default=1, server_default="1", nullable=False
+    )
+
+    subscription_tier: Mapped["SubscriptionTier"] = relationship(
+        "SubscriptionTier", back_populates="users"
     )
 
     podcasts: Mapped[list["Podcast"]] = relationship(
@@ -198,6 +208,12 @@ class SubscriptionTierUpdate(BaseModel):
     max_podcasts: int | None = None
     max_daily_episodes: int | None = None
     max_daily_extended_episodes: int | None = None
+
+
+class UserUsageResult(BaseModel):
+    podcasts: int
+    daily_episodes: int
+    daily_extended_episodes: int
 
 
 # User
