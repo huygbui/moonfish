@@ -59,7 +59,6 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
     )
     row = (await session.execute(stmt)).one()
 
-    # --- load the tier asynchronously ---
     await session.refresh(user, attribute_names=["subscription_tier"])
     tier = user.subscription_tier
 
@@ -73,8 +72,8 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
     )
 
 
-@router.put("/tier")
-async def update_user_tier(req: UserTierUpdate, user: UserCurrent, session: SessionCurrent):
+@router.put("/subscription")
+async def update_user_subscription(req: UserTierUpdate, user: UserCurrent, session: SessionCurrent):
     stmt = select(SubscriptionTier).where(SubscriptionTier.tier == req.tier)
     result = await session.execute(stmt)
     tier = result.scalar_one()
