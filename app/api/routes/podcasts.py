@@ -2,7 +2,7 @@ from collections import deque
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Response
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import SessionCurrent, UserCurrent
@@ -53,6 +53,16 @@ async def create_podcast(
     user: UserCurrent,
     session: SessionCurrent,
 ) -> PodcastResult:
+    podcast_count = await session.scalar(
+        select(func.count()).select_from(Podcast).where(Podcast.user_id == user.id)
+    )
+    await session.refresh(user, attribute_names=["subscription_tier"])
+    if podcast_count >= user.subscription_tier.max_podcasts:
+        raise HTTPException(
+            status_code=403,
+            detail="Podcast limit reached.",
+        )
+
     podcast = Podcast(**req.model_dump(), user=user)
     session.add(podcast)
     await session.commit()
