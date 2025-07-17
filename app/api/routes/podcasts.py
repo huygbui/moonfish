@@ -1,5 +1,5 @@
 from collections import deque
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import func, select, update
@@ -220,6 +220,51 @@ async def create_podcast_episode(
     podcast = await session.get(Podcast, podcast_id)
     if not podcast or podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
+
+    # Check daily episode limits
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+
+    # Count today's episodes
+    daily_count = await session.scalar(
+        select(func.count())
+        .select_from(Episode)
+        .where(
+            Episode.user_id == user.id,
+            Episode.created_at >= today,
+            Episode.created_at < tomorrow,
+            Episode.status != "cancelled",
+        )
+    )
+
+    # Ensure subscription_tier is loaded
+    await session.refresh(user, attribute_names=["subscription_tier"])
+
+    # Check total daily limit
+    if daily_count >= user.subscription_tier.max_daily_episodes:
+        raise HTTPException(
+            status_code=403,
+            detail="Daily episode limit reached.",
+        )
+
+    if req.length == "long":
+        extended_count = await session.scalar(
+            select(func.count())
+            .select_from(Episode)
+            .where(
+                Episode.user_id == user.id,
+                Episode.created_at >= today,
+                Episode.created_at < tomorrow,
+                Episode.length == "long",
+                Episode.status != "cancelled",
+            )
+        )
+
+        if extended_count >= user.subscription_tier.max_daily_extended_episodes:
+            raise HTTPException(
+                status_code=403,
+                detail="Daily extended episode limit reached.",
+            )
 
     episode = Episode(
         **req.model_dump(),
