@@ -41,7 +41,7 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
             Episode.user_id == user.id,
             Episode.created_at >= today,
             Episode.created_at < tomorrow,
-            Episode.status != "cancelled",
+            Episode.status != "failed",
         )
         .scalar_subquery()
         .label("daily_episodes"),
@@ -52,7 +52,7 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
             Episode.created_at >= today,
             Episode.created_at < tomorrow,
             Episode.length == "long",
-            Episode.status != "cancelled",
+            Episode.status != "failed",
         )
         .scalar_subquery()
         .label("daily_extended_episodes"),

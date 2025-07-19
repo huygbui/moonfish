@@ -233,7 +233,7 @@ async def create_podcast_episode(
             Episode.user_id == user.id,
             Episode.created_at >= today,
             Episode.created_at < tomorrow,
-            Episode.status != "cancelled",
+            Episode.status != "failed",
         )
     )
 
@@ -256,7 +256,7 @@ async def create_podcast_episode(
                 Episode.created_at >= today,
                 Episode.created_at < tomorrow,
                 Episode.length == "long",
-                Episode.status != "cancelled",
+                Episode.status != "failed",
             )
         )
 
