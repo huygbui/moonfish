@@ -24,6 +24,15 @@ async def get_users(session: SessionCurrent):
     return users
 
 
+@router.delete("/{user_id}")
+async def delete_user(user_id: int, session: SessionCurrent):
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.delete(user)
+    await session.commit()
+
+
 @router.get("/usage", response_model=UserUsageResult)
 async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsageResult:
     today = date.today()

@@ -229,6 +229,7 @@ class UserTierUpdate(BaseModel):
 class UserBase(BaseModel):
     id: int
     apple_id: str | None
+    device_id: str | None
     email: EmailStr | None
     name: str | None
     subscription_tier_id: int
@@ -347,6 +348,10 @@ class AppleSignInRequest(BaseModel):
     apple_id: str
     email: str | None = None
     full_name: str | None = None
+
+
+class GuestSignInRequest(BaseModel):
+    device_id: str
 
 
 class AuthResult(BaseModel):
