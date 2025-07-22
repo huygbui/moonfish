@@ -346,8 +346,9 @@ class TokenResult(Token):
 
 class AppleSignInRequest(BaseModel):
     apple_id: str
-    email: str | None = None
+    email: EmailStr | None = None
     full_name: str | None = None
+    device_id: str | None = None
 
 
 class GuestSignInRequest(BaseModel):

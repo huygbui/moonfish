@@ -21,28 +21,56 @@ async def apple_sign_in(request: AppleSignInRequest, session: SessionCurrent):
     Authenticate or create user via Apple Sign In
 
     - Creates new user if apple_id doesn't exist
+    - Upgrades guest user if device matches existing guest
     - Updates user info if provided (email/name only provided on first Apple sign in)
     - Returns JWT token for subsequent authenticated requests
     """
-    # Check if user exists
+    # First check if user exists by apple_id
     stmt = select(User).where(User.apple_id == request.apple_id)
     result = await session.execute(stmt)
-    user = result.scalars().one_or_none()
+    user = result.scalar_one_or_none()
 
     if not user:
-        # Create new user
-        user = User(apple_id=request.apple_id, email=request.email, name=request.full_name)
-        session.add(user)
+        # User doesn't exist - check if we should upgrade a guest or create new
+        guest_user = None
+
+        if request.device_id:
+            # Check for existing guest user on this device
+            stmt = select(User).where(User.device_id == request.device_id, User.apple_id.is_(None))
+            result = await session.execute(stmt)
+            guest_user = result.scalar_one_or_none()
+
+        if guest_user:
+            # Upgrade existing guest user
+            guest_user.apple_id = request.apple_id
+            guest_user.email = request.email
+            guest_user.name = request.full_name
+            user = guest_user
+        else:
+            # Create new user
+            user = User(
+                apple_id=request.apple_id,
+                email=request.email,
+                name=request.full_name,
+                device_id=request.device_id,
+            )
+            session.add(user)
+
         await session.commit()
         await session.refresh(user)
     else:
-        # Update user info if provided (Apple only provides this on first sign in)
+        # Existing Apple user - update info if provided
         updated = False
-        if request.email and not user.email:
+
+        if request.email:
             user.email = request.email
             updated = True
-        if request.full_name and not user.name:
+        if request.full_name:
             user.name = request.full_name
+            updated = True
+        # Update device_id if not set and provided
+        if request.device_id:
+            user.device_id = request.device_id
             updated = True
 
         if updated:
@@ -68,7 +96,7 @@ async def guest_sign_in(request: GuestSignInRequest, session: SessionCurrent):
     - Returns JWT token for subsequent authenticated requests
     """
     # Check if ANY user exists for this device
-    stmt = select(User).where(User.device_id == request.device_id, User.apple_id.is_(None))
+    stmt = select(User).where(User.device_id == request.device_id)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
