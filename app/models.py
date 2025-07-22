@@ -64,6 +64,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     apple_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    device_id: Mapped[str | None] = mapped_column(String, unique=True, index=True, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
