@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
 from app.api.deps import SessionCurrent
@@ -72,16 +72,18 @@ async def guest_sign_in(request: GuestSignInRequest, session: SessionCurrent):
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user:
+    if user:
+        if user.apple_id:
+            raise HTTPException(status_code=409, detail="Please sign in with Apple")
+
+    else:
         # Create new guest user
         user = User(device_id=request.device_id)
         session.add(user)
         await session.commit()
         await session.refresh(user)
 
-    # Create access token
     access_token = create_access_token(data={"user_id": user.id})
-
     return AuthResult(
         token=TokenResult(access_token=access_token),
         user=UserResult(**user.to_dict()),
