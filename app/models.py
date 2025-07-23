@@ -8,7 +8,7 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Types
-Length = Literal["short", "medium", "long"]
+Length = Literal["short", "long"]
 Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["narrative", "conversational"]
 Voice = Literal["male", "female"]
@@ -32,7 +32,7 @@ class Base(DeclarativeBase):
                 setattr(self, key, value)
 
     type_annotation_map = {
-        Length: sqlalchemy.Enum("short", "medium", "long", name="length"),
+        Length: sqlalchemy.Enum("short", "long", name="length"),
         Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
         Format: sqlalchemy.Enum("narrative", "conversational", name="format"),
         Voice: sqlalchemy.Enum("male", "female", name="voice"),
@@ -72,7 +72,11 @@ class User(Base):
     )
 
     subscription_tier_id: Mapped[int] = mapped_column(
-        ForeignKey("subscription_tier.id"), default=1, server_default="1", nullable=False
+        ForeignKey("subscription_tier.id"),
+        default=1,
+        server_default="1",
+        index=True,
+        nullable=False,
     )
 
     subscription_tier: Mapped["SubscriptionTier"] = relationship(
