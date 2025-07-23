@@ -10,7 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 # Types
 Length = Literal["short", "long"]
 Level = Literal["beginner", "intermediate", "advanced"]
-Format = Literal["narrative", "conversational"]
+Format = Literal["interview", "coffee_chat", "story", "analysis"]
 Voice = Literal["male", "female"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
 Step = Literal["research", "compose", "voice"]
@@ -34,7 +34,7 @@ class Base(DeclarativeBase):
     type_annotation_map = {
         Length: sqlalchemy.Enum("short", "long", name="length"),
         Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
-        Format: sqlalchemy.Enum("narrative", "conversational", name="format"),
+        Format: sqlalchemy.Enum("interview", "coffee_chat", "story", "analysis", name="format"),
         Voice: sqlalchemy.Enum("male", "female", name="voice"),
         Status: sqlalchemy.Enum(
             "pending", "active", "completed", "cancelled", "failed", name="status"
