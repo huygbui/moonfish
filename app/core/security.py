@@ -31,12 +31,10 @@ def verify_token(token: str) -> TokenData | None:
     try:
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
         user_id: int = payload.get("user_id")
-        apple_id: str = payload.get("apple_id")
-
-        if user_id is None or apple_id is None:
+        if user_id is None:
             return None
 
-        return TokenData(user_id=user_id, apple_id=apple_id)
+        return TokenData(user_id=user_id)
     except jwt.ExpiredSignatureError:
         return None
     except jwt.PyJWTError:

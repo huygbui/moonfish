@@ -34,7 +34,7 @@ async def get_user(credentials: CredentialsCurrent, session: SessionCurrent) -> 
     # Get user from database
     stmt = select(User).where(User.id == token_data.user_id)
     result = await session.execute(stmt)
-    user = result.scalars().one_or_none()
+    user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

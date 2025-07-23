@@ -337,7 +337,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: int
-    apple_id: str
 
 
 class TokenResult(Token):
