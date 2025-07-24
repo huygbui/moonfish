@@ -10,7 +10,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 # Types
 Length = Literal["short", "long"]
 Level = Literal["beginner", "intermediate", "advanced"]
-Format = Literal["interview", "coffee_chat", "story", "analysis"]
+Format = Literal["interview", "conversation", "story", "analysis"]
 Voice = Literal["male", "female"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
 Step = Literal["research", "compose", "voice"]
