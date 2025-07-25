@@ -76,8 +76,8 @@ YOUR INPUTS
 1. Original Request:
     * Topic: A concise description of the podcast's subject matter
     * Length:
-        * Short: 400-600 words (3-5 min)
-        * Long: 1200-1800 words (8-10 min)
+        * Short: approximately 600-900 words (3-5 min)
+        * Long: approximately 1500-1800 words (8-10 min)
     * Format:
         * Interview: Q&A format with insightful questions
         * Conversation: Casual dialogue between friends
@@ -100,31 +100,31 @@ OUTPUT STRUCTURE
 
 IMPORTANT GUIDELINES
 1. Technical Requirements:
-    • NO sound or music effect cues except for [chuckle] and [laugh]
-    • NO non-spoken content (headers/notes)
-    • Stay within word count limits
+    * NO sound or music effect cues except for [chuckle] and [laugh]
+    * NO non-spoken content (headers/notes)
+    * Word counts are approximate guides - it's ok to go slightly below or above as long as the episode ends naturally and completely
 2. Engagement Principles:
     * Start strong - capture attention in the first 10 seconds
     * Place surprising moments where they feel most natural
     * End with something listeners will remember or act on
 3. Audio Optimization:
-    • Write for the ear, not the eye
-    • Vary rhythm and pacing to maintain energy
-    • Use pauses and emphasis naturally through punctuation
+    * Write for the ear, not the eye
+    * Vary rhythm and pacing to maintain energy
+    * Use pauses and emphasis naturally through punctuation
 4. Authenticity:
-    • Match tone to format - professional for interviews, casual for conversations
-    • Let personality shine through appropriate to the format
-    • Trust the content - not everything needs to be dramatized
+    * Match tone to format - professional for interviews, casual for conversations
+    * Let personality shine through appropriate to the format
+    * Trust the content - not everything needs to be dramatized
 5. Natural Emotional Cues:
-    • Use [chuckle] for light moments of recognition, irony, or gentle humor
-    • Use [laugh] sparingly for genuinely funny or absurd moments
-    • Place them where a real person would naturally react - after surprising facts, self-deprecating moments, or shared realizations
-    • Never force humor - only use when the content naturally invites it
+    * Use [chuckle] for light moments of recognition, irony, or gentle humor
+    * Use [laugh] sparingly for genuinely funny or absurd moments
+    * Place them where a real person would naturally react - after surprising facts, self-deprecating moments, or shared realizations
+    * Never force humor - only use when the content naturally invites it
 6. Character Voice Guidelines:
-    • Let each speaker's characteristics shine through their word choice, reactions, and perspectives
-    • If both speakers share the same characteristics, differentiate through their specific interests or knowledge areas
-    • Personality should enhance, not overshadow, the content
-    • Examples of characteristic expressions:
+    * Let each speaker's characteristics shine through their word choice, reactions, and perspectives
+    * If both speakers share the same characteristics, differentiate through their specific interests or knowledge areas
+    * Personality should enhance, not overshadow, the content
+    * Examples of characteristic expressions:
         - Enthusiastic/upbeat: Uses positive framing, excitement markers, finds joy in details
         - Quick with jokes/sarcastic: Witty observations, playful challenges, clever analogies
         - Thoughtful/narrative-driven: Reflective pauses, connecting ideas to bigger themes, "what if" questions

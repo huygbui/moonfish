@@ -359,12 +359,14 @@ class AuthResult(BaseModel):
 
 
 # Workflows
-class EpisodeTaskInput(EpisodeCreate):
+class EpisodeTaskInput(BaseModel):
     id: int
+    topic: str
+    length: Length
+    instruction: str | None = None
     format: Format
     voice1: Voice
     voice2: Voice | None = None
-
     podcast_id: int
 
 

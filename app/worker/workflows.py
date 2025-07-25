@@ -85,6 +85,7 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput
         contents=[
             prompts.compose_system,
             Template(prompts.compose_user).substitute(
+                topic=input.topic,
                 length=input.length,
                 format=input.format,
                 character1=prompts.get_character(input.voice1),
