@@ -11,11 +11,12 @@ YOUR INPUTS
     * A concise description of the podcast's subject matter
 2. Length:
     * Short: Key highlights only (3-5 min)
-    * Medium: Broader exploration (5-10 min)
-    * Long: Deep dive analysis (10-15 min)
+    * Long: Deep dive analysis (8-10 min)
 4. Format:
-    * Narrative: Single-host storytelling
-    * Conversation: Two-host discussion
+    * Interview: Q&A format with insightful questions
+    * Conversation: Casual dialogue between friends
+    * Story: Narrative-driven storytelling
+    * Analysis: Expert breakdown and insights
 5. Instruction:
     * An optional description of specific requests or contexts
 
@@ -34,9 +35,8 @@ OUTPUT STRUCTURE & CONTENT
 3. Key Sections/Themes:
     * Number of sections appropriate for the podcast's length:
         * Short: 2-3 sections
-        * Medium: 3-4 sections
         * Long: 5-6 sections
-4. "Wow" Moments:
+4. Key Moments:
     * 3-5 distinct, surprising, or highly engaging facts.
 5. Conclusion/Takeaway Ideas:
     * 1-3 main takeaways or concluding thoughts.
@@ -51,6 +51,11 @@ IMPORTANT GUIDELINES
 5. Direct:
     * Start immediately with research content (no intros/meta-comments like "Here is a comprehensive research document...")
     * Provide only research material, NOT the script itself
+6. Format-Specific Focus:
+    * Interview: Prioritize expert quotes, controversial viewpoints, deep-dive questions, areas of debate
+    * Conversation: Prioritize relatable examples, common experiences, surprising facts that spark discussion
+    * Story: Prioritize character details, chronological events, emotional moments, narrative progression
+    * Analysis: Prioritize data points, frameworks, comparative insights, systematic breakdowns
 """
 
 research_user = """
