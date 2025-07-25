@@ -98,9 +98,6 @@ def upgrade() -> None:
         sa.Column("topic", sa.String(), nullable=False),
         sa.Column("length", sa.Enum("short", "long", name="length"), nullable=False),
         sa.Column(
-            "level", sa.Enum("beginner", "intermediate", "advanced", name="level"), nullable=False
-        ),
-        sa.Column(
             "format",
             sa.Enum("interview", "coffee_chat", "story", "analysis", name="format"),
             nullable=False,

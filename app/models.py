@@ -9,7 +9,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Types
 Length = Literal["short", "long"]
-Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["interview", "conversation", "story", "analysis"]
 Voice = Literal["maya", "jake", "sofia", "alex"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
@@ -33,7 +32,6 @@ class Base(DeclarativeBase):
 
     type_annotation_map = {
         Length: sqlalchemy.Enum("short", "long", name="length"),
-        Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
         Format: sqlalchemy.Enum("interview", "coffee_chat", "story", "analysis", name="format"),
         Voice: sqlalchemy.Enum("maya", "jake", "sofia", "alex", name="voice"),
         Status: sqlalchemy.Enum(
@@ -123,7 +121,6 @@ class Episode(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     topic: Mapped[str] = mapped_column(String)
     length: Mapped[Length]
-    level: Mapped[Level]
     format: Mapped[Format]
     voice1: Mapped[Voice]
     voice2: Mapped[Optional[Voice]] = mapped_column(nullable=True)
@@ -248,7 +245,6 @@ class UserResult(UserBase):
 class EpisodeCreate(BaseModel):
     topic: str
     length: Length
-    level: Level
     instruction: str | None = None
 
 
@@ -258,7 +254,6 @@ class EpisodeResult(BaseModel):
 
     topic: str
     length: Length
-    level: Level
     instruction: str | None = None
 
     format: Format
