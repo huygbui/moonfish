@@ -13,7 +13,7 @@ api_key_header = APIKeyHeader(name="X-Admin-Key")
 
 
 # JWT Functions
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> tuple[str, datetime]:
     """Create a new JWT access token"""
     to_encode = data.copy()
 
@@ -24,7 +24,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-    return encoded_jwt
+    return encoded_jwt, expire
 
 
 def verify_token(token: str) -> TokenData | None:

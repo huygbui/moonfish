@@ -111,8 +111,8 @@ async def guest_sign_in(request: GuestSignInRequest, session: SessionCurrent):
         await session.commit()
         await session.refresh(user)
 
-    access_token = create_access_token(data={"user_id": user.id})
+    access_token, expires_at = create_access_token(data={"user_id": user.id})
     return AuthResult(
-        token=TokenResult(access_token=access_token),
+        token=TokenResult(access_token=access_token, expires_at=int(expires_at.timestamp())),
         user=UserResult(**user.to_dict()),
     )

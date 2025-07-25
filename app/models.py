@@ -331,6 +331,7 @@ class PodcastImageUploadURLResult(BaseModel):
 # JWT Models
 class Token(BaseModel):
     access_token: str
+    expires_at: int
     token_type: str = "bearer"
 
 
