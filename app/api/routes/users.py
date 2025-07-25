@@ -8,29 +8,11 @@ from app.models import (
     Episode,
     Podcast,
     SubscriptionTier,
-    User,
-    UserResult,
     UserTierUpdate,
     UserUsageResult,
 )
 
 router = APIRouter(prefix="/users", tags=["Users"])
-
-
-@router.get("", response_model=list[UserResult])
-async def get_users(session: SessionCurrent):
-    result = await session.execute(select(User))
-    users = result.scalars().all()
-    return users
-
-
-@router.delete("/{user_id}")
-async def delete_user(user_id: int, session: SessionCurrent):
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    await session.delete(user)
-    await session.commit()
 
 
 @router.get("/usage", response_model=UserUsageResult)
