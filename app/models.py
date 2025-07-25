@@ -32,7 +32,7 @@ class Base(DeclarativeBase):
 
     type_annotation_map = {
         Length: sqlalchemy.Enum("short", "long", name="length"),
-        Format: sqlalchemy.Enum("interview", "coffee_chat", "story", "analysis", name="format"),
+        Format: sqlalchemy.Enum("interview", "conversation", "story", "analysis", name="format"),
         Voice: sqlalchemy.Enum("maya", "jake", "sofia", "alex", name="voice"),
         Status: sqlalchemy.Enum(
             "pending", "active", "completed", "cancelled", "failed", name="status"
