@@ -19,7 +19,7 @@ def get_voice(speaker: str = None) -> str:
     """
     voice_profiles: dict[str, str] = {
         "maya": "Laomedeia",  # Upbeat
-        "jake": "Zubenelgenubi",  # Casual
+        "jake": "Puck",  # Upbeat
         "sofia": "Leda",  # Youthful
         "alex": "Pulcherrima",  # Forward
     }
