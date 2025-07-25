@@ -11,7 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 Length = Literal["short", "long"]
 Level = Literal["beginner", "intermediate", "advanced"]
 Format = Literal["interview", "conversation", "story", "analysis"]
-Voice = Literal["male", "female"]
+Voice = Literal["maya", "jake", "sofia", "alex"]
 Status = Literal["pending", "active", "completed", "cancelled", "failed"]
 Step = Literal["research", "compose", "voice"]
 
@@ -35,7 +35,7 @@ class Base(DeclarativeBase):
         Length: sqlalchemy.Enum("short", "long", name="length"),
         Level: sqlalchemy.Enum("beginner", "intermediate", "advanced", name="level"),
         Format: sqlalchemy.Enum("interview", "coffee_chat", "story", "analysis", name="format"),
-        Voice: sqlalchemy.Enum("male", "female", name="voice"),
+        Voice: sqlalchemy.Enum("maya", "jake", "sofia", "alex", name="voice"),
         Status: sqlalchemy.Enum(
             "pending", "active", "completed", "cancelled", "failed", name="status"
         ),
