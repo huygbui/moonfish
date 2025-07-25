@@ -85,7 +85,12 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput
         contents=[
             prompts.compose_system,
             Template(prompts.compose_user).substitute(
-                input.model_dump(), research_result=research_output.result
+                length=input.length,
+                format=input.format,
+                character1=prompts.get_character(input.voice1),
+                character2=prompts.get_character(input.voice2),
+                instruction=input.instruction,
+                research_result=research_output.result,
             ),
         ],
         config=types.GenerateContentConfig(

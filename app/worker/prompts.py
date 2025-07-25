@@ -77,11 +77,15 @@ YOUR INPUTS
     * Topic: A concise description of the podcast's subject matter
     * Length:
         * Short: 400-600 words (3-5 min)
-        * Medium: 600-1200 words (5-10 min)
-        * Long: 1200-2000 words (10-15 min)
+        * Long: 1200-1800 words (8-10 min)
     * Format:
-        * Conversation: Two-host discussion
-        * Narrative: Single-host storytelling
+        * Interview: Q&A format with insightful questions
+        * Conversation: Casual dialogue between friends
+        * Story: Narrative-driven storytelling
+        * Analysis: Expert breakdown and insights
+    * Spearker Character: Speaker 1 - [...], Speaker 2 - [...]
+        * Only applicable for Interview and Conversation formats
+        * For Story and Analysis formats, use only Speaker 1 characteristics
     * Instruction: An optional description of specific requests or contexts
 2. Research Document:
     * Core information, hooks, key points, and interesting details
@@ -91,25 +95,45 @@ OUTPUT STRUCTURE
     * title: a concise, engaging, and relevant title for the podcast episode.
     * summary: a compelling single paragraph that previews what listeners can expect from the episode and hooks their interest without revealing the main insights or conclusions.
     * script: a full podcast script according to the requested format
-        * conversation format: two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
-        * narrative format: single script with no speaker tags
+        * Interview and Conversation format: two spearkers dialogue. Each turn is explicitly tagged Speaker 1: ... Speaker 2: ...
+        * Story and Analysis format: single script with no speaker tags
 
 IMPORTANT GUIDELINES
-1. Strict Prohibitions:
-    • NO sound or music effect cues
+1. Technical Requirements:
+    • NO sound or music effect cues except for [chuckle] and [laugh]
     • NO non-spoken content (headers/notes)
-2. Structural flow:
-    * Opening: Compelling hook + topic introduction
-    * Core: Logical flow of key information
-    * Closing: Memorable takeaways
-3. Content Transformation:
-    • Convert facts into engaging stories/analogies
-    • Place "wow" moments strategically
-    • Use rhetorical questions for listener immersion
-4. Tone & Flow:
-    • Conversational yet authoritative
-    • Vary sentence length for auditory rhythm
-    • Use contractions for natural delivery
+    • Stay within word count limits
+2. Engagement Principles:
+    * Start strong - capture attention in the first 10 seconds
+    * Place surprising moments where they feel most natural
+    * End with something listeners will remember or act on
+3. Audio Optimization:
+    • Write for the ear, not the eye
+    • Vary rhythm and pacing to maintain energy
+    • Use pauses and emphasis naturally through punctuation
+4. Authenticity:
+    • Match tone to format - professional for interviews, casual for conversations
+    • Let personality shine through appropriate to the format
+    • Trust the content - not everything needs to be dramatized
+5. Natural Emotional Cues:
+    • Use [chuckle] for light moments of recognition, irony, or gentle humor
+    • Use [laugh] sparingly for genuinely funny or absurd moments
+    • Place them where a real person would naturally react - after surprising facts, self-deprecating moments, or shared realizations
+    • Never force humor - only use when the content naturally invites it
+6. Character Voice Guidelines:
+    • Let each speaker's characteristics shine through their word choice, reactions, and perspectives
+    • If both speakers share the same characteristics, differentiate through their specific interests or knowledge areas
+    • Personality should enhance, not overshadow, the content
+    • Examples of characteristic expressions:
+        - Enthusiastic/upbeat: Uses positive framing, excitement markers, finds joy in details
+        - Quick with jokes/sarcastic: Witty observations, playful challenges, clever analogies
+        - Thoughtful/narrative-driven: Reflective pauses, connecting ideas to bigger themes, "what if" questions
+        - No-nonsense/authentic: Direct language, cuts through complexity, practical focus
+7. Format-Specific Requirements:
+    * Interview: Speaker 1 asks curious questions that guide exploration; Speaker 2 shares knowledge conversationally; Natural follow-up questions that dig deeper
+    * Conversation: Both speakers contribute equally to discovery; Genuine reactions and spontaneous connections; Friendly disagreements or different perspectives welcome
+    * Story: Clear beginning, middle, and end structure; Use descriptive language to paint mental pictures; Connect facts through narrative thread
+    * Analysis: Systematic exploration of the topic; Break down complex ideas into understandable parts; Draw connections between different aspects
 """
 
 compose_user = """
@@ -119,7 +143,23 @@ Generate the title, summary and script based on the below podcast request and re
     * Topic: $topic
     * Length: $length
     * Format: $format
+    * Speaker Charater: Speaker 1 - [$character1], Speaker 2 - [$character2]
     * Instruction: $instruction
 2. Research document:
 $research_result
 """
+
+
+# Helpers
+def get_character(speaker: str = None) -> str:
+    """
+    Returns formatted speaker descriptions for the prompt.
+    """
+    speakers: dict[str, str] = {
+        "maya": "Enthusiastic and upbeat, always finds the silver lining in everything",
+        "jake": "Quick with jokes, questions everything, playfully sarcastic",
+        "sofia": "Thoughtful and narrative-driven, asks deep questions",
+        "alex": "No-nonsense and authentic, tells it like it is",
+    }
+
+    return speakers[speaker] if speaker in speakers else "Natural and conversational"
