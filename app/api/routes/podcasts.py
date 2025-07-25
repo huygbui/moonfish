@@ -95,7 +95,7 @@ async def get_podcast(podcast_id: int, user: UserCurrent, session: SessionCurren
 async def update_podcast(
     req: PodcastUpdate, podcast_id: int, user: UserCurrent, session: SessionCurrent
 ) -> PodcastUpdateResult:
-    update_data = req.model_dump(exclude_unset=True)
+    update_data = req.model_dump()
 
     if not update_data:
         podcast = await session.get(Podcast, podcast_id)
