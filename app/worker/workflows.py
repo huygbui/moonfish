@@ -142,13 +142,17 @@ async def voice(input: EpisodeTaskInput, ctx: Context):
                         types.SpeakerVoiceConfig(
                             speaker="Speaker 1",
                             voice_config=types.VoiceConfig(
-                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Zephyr")
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                    voice_name=helpers.get_voice(input.voice1)
+                                )
                             ),
                         ),
                         types.SpeakerVoiceConfig(
                             speaker="Speaker 2",
                             voice_config=types.VoiceConfig(
-                                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Puck")
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                    voice_name=helpers.get_voice(input.voice2)
+                                )
                             ),
                         ),
                     ]

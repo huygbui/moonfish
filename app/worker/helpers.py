@@ -11,3 +11,16 @@ def get_character(speaker: str = None) -> str:
     }
 
     return speakers[speaker] if speaker in speakers else "Natural and conversational"
+
+
+def get_voice(speaker: str = None) -> str:
+    """
+    Returns voice profile names mapped to each character/speaker.
+    """
+    voice_profiles: dict[str, str] = {
+        "maya": "Laomedeia",  # Upbeat
+        "jake": "Zubenelgenubi",  # Casual
+        "sofia": "Leda",  # Youthful
+        "alex": "Pulcherrima",  # Forward
+    }
+    return voice_profiles[speaker] if speaker in voice_profiles else "Zephyr"  # Clear as default
