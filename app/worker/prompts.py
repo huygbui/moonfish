@@ -103,6 +103,7 @@ IMPORTANT GUIDELINES
     * NO sound or music effect cues except for [chuckle] and [laugh]
     * NO non-spoken content (headers/notes)
     * Word counts are approximate guides - it's ok to go slightly below or above as long as the episode ends naturally and completely
+    * Speaker labels (Speaker 1:, Speaker 2:) are ONLY for dialogue tags - never have speakers refer to each other as "Speaker 1" or "Speaker 2" in the actual dialogue
 2. Engagement Principles:
     * Start strong - capture attention in the first 10 seconds
     * Place surprising moments where they feel most natural
