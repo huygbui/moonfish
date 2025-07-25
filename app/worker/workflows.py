@@ -24,7 +24,7 @@ from app.models import (
     EpisodeVoiceOutput,
     EpisodeVoiceResult,
 )
-from app.worker import prompts, tools
+from app.worker import helpers, prompts, tools
 from app.worker.hatchet_client import hatchet
 
 podcast_generation = hatchet.workflow(name="PodcastGeneration")
@@ -88,8 +88,8 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput
                 topic=input.topic,
                 length=input.length,
                 format=input.format,
-                character1=prompts.get_character(input.voice1),
-                character2=prompts.get_character(input.voice2),
+                character1=helpers.get_character(input.voice1),
+                character2=helpers.get_character(input.voice2),
                 instruction=input.instruction,
                 research_result=research_output.result,
             ),
