@@ -76,7 +76,7 @@ YOUR INPUTS
 1. Original Request:
     * Topic: A concise description of the podcast's subject matter
     * Length:
-        * Short: approximately 600-900 words (3-5 min)
+        * Short: approximately 500-800 words (3-5 min)
         * Long: approximately 1500-1800 words (8-10 min)
     * Format:
         * Interview: Q&A format with insightful questions
@@ -103,7 +103,7 @@ IMPORTANT GUIDELINES
     * NO sound or music effect cues except for [chuckle] and [laugh]
     * NO non-spoken content (headers/notes)
     * Word counts are approximate guides - it's ok to go slightly below or above as long as the episode ends naturally and completely
-    * Speaker labels (Speaker 1:, Speaker 2:) are ONLY for dialogue tags - never have speakers refer to each other as "Speaker 1" or "Speaker 2" in the actual dialogue
+    * NEVER have speakers refer to each other, especially as "Speaker 1" or "Speaker 2" in the actual dialogue
 2. Engagement Principles:
     * Start strong - capture attention in the first 10 seconds
     * Place surprising moments where they feel most natural
