@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session
-from app.core.security import bearer_scheme, verify_token
+from app.core.security import api_key_header, bearer_scheme, verify_admin_key, verify_token
 from app.models import User
 
 
@@ -43,3 +43,17 @@ async def get_user(credentials: CredentialsCurrent, session: SessionCurrent) -> 
 
 
 UserCurrent = Annotated[User, Depends(get_user)]
+
+
+async def get_api_key(api_key: Annotated[str, Security(api_key_header)]) -> str:
+    """Verify admin API key using FastAPI's built-in APIKeyHeader"""
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Admin API key required in X-Admin-Key header")
+
+    if not verify_admin_key(api_key):
+        raise HTTPException(status_code=403, detail="Invalid admin API key")
+
+    return api_key
+
+
+APIKeyCurrent = Annotated[str, Depends(get_api_key)]

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.params import Depends
 from sqlalchemy import select, update
 
-from app.api.deps import SessionCurrent
+from app.api.deps import SessionCurrent, get_api_key
 from app.models import (
     SubscriptionTier,
     SubscriptionTierResult,
@@ -11,7 +12,7 @@ from app.models import (
     UserTierUpdate,
 )
 
-router = APIRouter(prefix="/admin", tags=["Admin"])
+router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(get_api_key)])
 
 
 @router.get("/users", response_model=list[UserResult])
