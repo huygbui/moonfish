@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.param_functions import Depends
 from sqlalchemy import select
 
-from app.api.deps import SessionCurrent
+from app.api.deps import SessionCurrent, get_client_key
 from app.core.security import create_access_token
 from app.models import (
     AppleSignInRequest,
@@ -12,7 +13,7 @@ from app.models import (
     UserResult,
 )
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/auth", tags=["Authentication"], dependencies=[Depends(get_client_key)])
 
 
 @router.post("/apple", response_model=AuthResult)

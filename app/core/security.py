@@ -9,7 +9,8 @@ from .config import settings
 
 # JWT Bearer token security
 bearer_scheme = HTTPBearer()
-api_key_header = APIKeyHeader(name="X-Admin-Key")
+admin_api_key_header = APIKeyHeader(name="X-Admin-Key", scheme_name="admin_api_key_header")
+client_api_key_header = APIKeyHeader(name="X-Client-Key", scheme_name="client_api_key_header")
 
 
 # JWT Functions
@@ -44,3 +45,7 @@ def verify_token(token: str) -> TokenData | None:
 
 def verify_admin_key(api_key: str) -> bool:
     return api_key == settings.admin_api_key
+
+
+def verify_client_key(api_key: str) -> bool:
+    return api_key == settings.client_api_key

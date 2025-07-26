@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     environment: Literal["development", "production"] = "development"
 
     admin_api_key: str
+    client_api_key: str
 
     jwt_secret_key: str
     jwt_algorithm: str
