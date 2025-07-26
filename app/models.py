@@ -3,6 +3,7 @@ from typing import Any, Literal, Optional
 
 import sqlalchemy
 from pydantic import BaseModel, EmailStr
+from pydantic.types import UUID4
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -228,7 +229,7 @@ class UserTierUpdate(BaseModel):
 # User
 class UserBase(BaseModel):
     id: int
-    device_id: str | None
+    device_id: UUID4 | None
     email: EmailStr | None
     name: str | None
     subscription_tier_id: int
@@ -342,7 +343,7 @@ class TokenResult(Token):
 
 
 class GuestSignInRequest(BaseModel):
-    device_id: str
+    device_id: UUID4
 
 
 class AuthResult(BaseModel):

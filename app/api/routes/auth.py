@@ -24,13 +24,14 @@ async def guest_sign_in(request: GuestSignInRequest, session: SessionCurrent):
     - Returns JWT token for subsequent authenticated requests
     """
     # Check if ANY user exists for this device
-    stmt = select(User).where(User.device_id == request.device_id)
+    device_id = str(request.device_id)
+    stmt = select(User).where(User.device_id == device_id)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user:
         # Create new guest user
-        user = User(device_id=request.device_id)
+        user = User(device_id=device_id)
         session.add(user)
         await session.commit()
         await session.refresh(user)
