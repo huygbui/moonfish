@@ -61,7 +61,6 @@ class User(Base):
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    apple_id: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
     device_id: Mapped[str | None] = mapped_column(String, unique=True, index=True, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -341,13 +340,6 @@ class TokenData(BaseModel):
 
 class TokenResult(Token):
     pass
-
-
-class AppleSignInRequest(BaseModel):
-    apple_id: str
-    email: EmailStr | None = None
-    full_name: str | None = None
-    device_id: str | None = None
 
 
 class GuestSignInRequest(BaseModel):
