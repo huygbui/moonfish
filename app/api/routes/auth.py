@@ -16,7 +16,7 @@ from app.models import (
 router = APIRouter(prefix="/auth", tags=["Authentication"], dependencies=[Depends(get_client_key)])
 
 
-@router.post("/apple", response_model=AuthResult)
+# @router.post("/apple", response_model=AuthResult)
 async def apple_sign_in(request: AppleSignInRequest, session: SessionCurrent):
     """
     Authenticate or create user via Apple Sign In
@@ -79,10 +79,12 @@ async def apple_sign_in(request: AppleSignInRequest, session: SessionCurrent):
             await session.refresh(user)
 
     # Create access token
-    access_token = create_access_token(data={"user_id": user.id, "apple_id": user.apple_id})
+    access_token, expires_at = create_access_token(
+        data={"user_id": user.id, "apple_id": user.apple_id}
+    )
 
     return AuthResult(
-        token=TokenResult(access_token=access_token),
+        token=TokenResult(access_token=access_token, expires_at=int(expires_at.timestamp())),
         user=UserResult(**user.to_dict()),
     )
 
