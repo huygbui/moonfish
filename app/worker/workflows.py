@@ -110,7 +110,7 @@ async def compose(input: EpisodeTaskInput, ctx: Context) -> EpisodeComposeOutput
     )
 
 
-@podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=5))
+@podcast_generation.task(parents=[compose], execution_timeout=timedelta(minutes=10))
 async def voice(input: EpisodeTaskInput, ctx: Context):
     # Get output
     compose_output = EpisodeComposeOutput.model_validate(ctx.task_output(compose))
