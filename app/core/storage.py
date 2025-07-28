@@ -19,8 +19,13 @@ DeleteObject = DeleteObject
 
 def get_public_url(object_name: str, updated_at: datetime | None = None) -> str | None:
     """Generate permanent public URL with versioning"""
-    protocol = "https" if settings.environment != "development" else "http"
-    base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
+    if settings.environment == "development":
+        protocol = "http"
+        base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
+    else:
+        protocol = "https"
+        # In production, the bucket matches directly to the server url
+        base_url = f"{protocol}://{settings.minio_server}/{object_name}"
     if updated_at:
         version = int(updated_at.timestamp())
         return f"{base_url}?v={version}"
