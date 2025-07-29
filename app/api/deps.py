@@ -44,7 +44,7 @@ async def get_user(credentials: CredentialsCurrent, session: SessionCurrent) -> 
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="User not found")
 
     return user
 
@@ -58,7 +58,7 @@ async def get_admin_key(api_key: Annotated[str, Security(admin_api_key_header)])
         raise HTTPException(status_code=401, detail="Admin API key required in X-Admin-Key header")
 
     if not verify_admin_key(api_key):
-        raise HTTPException(status_code=403, detail="Invalid admin API key")
+        raise HTTPException(status_code=401, detail="Invalid admin API key")
 
     return api_key
 
@@ -71,6 +71,6 @@ async def get_client_key(api_key: Annotated[str, Security(client_api_key_header)
         )
 
     if not verify_client_key(api_key):
-        raise HTTPException(status_code=403, detail="Invalid client API key")
+        raise HTTPException(status_code=401, detail="Invalid client API key")
 
     return api_key
