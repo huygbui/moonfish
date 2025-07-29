@@ -55,10 +55,10 @@ UserCurrent = Annotated[User, Depends(get_user)]
 async def get_admin_key(api_key: Annotated[str, Security(admin_api_key_header)]) -> str:
     """Verify admin API key using FastAPI's built-in APIKeyHeader"""
     if not api_key:
-        raise HTTPException(status_code=401, detail="Admin API key required in X-Admin-Key header")
+        raise HTTPException(status_code=403, detail="Admin API key required in X-Admin-Key header")
 
     if not verify_admin_key(api_key):
-        raise HTTPException(status_code=401, detail="Invalid admin API key")
+        raise HTTPException(status_code=403, detail="Invalid admin API key")
 
     return api_key
 
@@ -67,10 +67,10 @@ async def get_client_key(api_key: Annotated[str, Security(client_api_key_header)
     """Verify admin API key using FastAPI's built-in APIKeyHeader"""
     if not api_key:
         raise HTTPException(
-            status_code=401, detail="Client API key required in X-Client-Key header"
+            status_code=403, detail="Client API key required in X-Client-Key header"
         )
 
     if not verify_client_key(api_key):
-        raise HTTPException(status_code=401, detail="Invalid client API key")
+        raise HTTPException(status_code=403, detail="Invalid client API key")
 
     return api_key
