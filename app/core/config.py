@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     minio_bucket: str
     minio_server: str
 
-    r2_public_domain: str | None = None
+    s3_public_domain: str | None = None
 
     sentry_dsn: HttpUrl | None = None
     sentry_traces_sample_rate: float | None = None

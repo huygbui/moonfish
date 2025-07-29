@@ -24,8 +24,8 @@ def get_public_url(object_name: str, updated_at: datetime | None = None) -> str 
         base_url = f"{protocol}://{settings.minio_server}/{minio_bucket}/{object_name}"
     else:
         protocol = "https"
-        # In production, the bucket matches directly to the server url
-        base_url = f"{protocol}://{settings.r2_public_domain}/{object_name}"
+        # In production, the bucket matches directly to the public domain
+        base_url = f"{protocol}://{settings.s3_public_domain}/{object_name}"
     if updated_at:
         version = int(updated_at.timestamp())
         return f"{base_url}?v={version}"
