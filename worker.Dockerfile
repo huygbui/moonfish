@@ -1,34 +1,40 @@
-# Use Python 3.12 slim image
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1
 
-# Install system dependencies including ffmpeg
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# ------------- Build stage -------------
+FROM ghcr.io/astral-sh/uv:python3.12-alpine AS builder
 
-# Set working directory
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0
+
 WORKDIR /app
 
-# Copy dependency files first (for better Docker layer caching)
-COPY pyproject.toml ./
+# Install dependencies (cached)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project --no-dev
 
-# Copy app structure for package installation
-COPY app/ ./app/
+# Copy source and install the project
+COPY . /app
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
 
-# Install the package and dependencies (not editable for production)
-RUN pip install --no-cache-dir .
+# ------------- Runtime stage -------------
+FROM python:3.12-alpine
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash worker && \
-    chown -R worker:worker /app
+# Install minimal FFmpeg for audio processing
+RUN apk add --no-cache ffmpeg
+
+# Create unprivileged user
+RUN addgroup -g 1001 worker && adduser -D -u 1001 -G worker worker
+
+# Copy the entire app directory from builder
+COPY --from=builder --chown=worker:worker /app /app
+
+WORKDIR /app
 USER worker
+ENV PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-
-# # Health check
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-#     CMD python -c "from app.worker.hatchet_client import hatchet; print('Worker healthy')" || exit 1
-
-# Run the worker
 CMD ["python", "-m", "app.run_worker"]

@@ -1,27 +1,27 @@
 #!/bin/bash
-
-# Build and push moonfish worker to Artifact Registry
-set -e  # Exit on any error
+# Build moonfish worker Docker image
+set -e
 
 # Configuration
 PROJECT_ID="moonfish-451215"
 REGION="us-east4"
 REPO_NAME="cloud-run-source-deploy"
 IMAGE_NAME="moonfish/worker"
-TAG="${1:-latest}"  # Use first argument as tag, default to 'latest'
+TAG="${1:-latest}"
 
 # Full image path
 FULL_IMAGE_PATH="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${TAG}"
 
-echo "🔨 Building worker image..."
-# Build from project root, regardless of where script is run from
+# Navigate to project root
 cd "$(dirname "$0")/.."
-docker build -f worker.Dockerfile -t "${FULL_IMAGE_PATH}" .
 
-echo "Pushing to Artifact Registry..."
-docker push "${FULL_IMAGE_PATH}"
+# Enable BuildKit for faster builds
+export DOCKER_BUILDKIT=1
 
-echo "Successfully pushed: ${FULL_IMAGE_PATH}"
+# Build the image
+docker build --platform linux/amd64 -f worker.Dockerfile -t "${FULL_IMAGE_PATH}" .
+
+# Show image info
 echo ""
-echo "To deploy this image:"
-echo "  gcloud run deploy moonfish-worker --image=${FULL_IMAGE_PATH}"
+echo "Build complete!"
+echo ""
