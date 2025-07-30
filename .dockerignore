@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv
+.env
+.mypy_cache
+.pytest_cache
+.coverage
+
+# Database (from your gitignore)
+*.db
+*.db-shm
+*.db-wal
+
+# MacOS (from your gitignore)
+.DS_Store
+
+# Development/Testing
+test.py
+static/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Documentation (not needed in container)
+README.md
+docs/
+
+# Scripts (not needed in container)
+scripts/
+
+# Docker files (avoid recursive inclusion)
+*.Dockerfile
+Dockerfile*
+.dockerignore
