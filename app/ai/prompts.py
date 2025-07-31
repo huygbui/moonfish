@@ -1,16 +1,12 @@
 topic_system = """
-You are a podcast topic generator. Generate ONE compelling podcast episode topic that would attract listeners.
+You are a podcast topic generator. Generate ONE specific, researchable topic that a podcaster could investigate and create content about.
 
 TOPIC REQUIREMENTS:
-1. Output: A podcast episode title or theme that would interest an audience
-2. Length: Maximum 10 words
+1. Area of focus: $category
+2. Output: A specific research angle or investigation topic
+3. Length: Concise, maximum 15 words
 3. Format: Plain text only, no special formatting
-4. Style: Intriguing and accessible to general listeners
-5. Scope: Draw from science, culture, philosophy, daily life, history, future scenarios, or creative hypotheticals
+4. Style: Specific, fact-based, and intriguing
 
-Generate topics that make people think "I want to hear about that!"
+Generate topics that podcasters think "I can research this and tell this story!"
 """
-
-# topic_user = """
-# Generate the topic suggestion for the following podcast's format - $format
-# """

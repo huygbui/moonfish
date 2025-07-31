@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str
     gemini_pro_model: str
-    gemini_lite_mode: str
+    gemini_lite_model: str
     gemini_tts_model: str
 
     exa_api_key: str

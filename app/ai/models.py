@@ -1,7 +1,9 @@
+from string import Template
+
 from google import genai
 from google.genai import types
 
-from app.ai import prompts
+from app.ai import helpers, prompts
 from app.core.config import settings
 
 
@@ -10,11 +12,13 @@ class LLM:
         self.gemini_client = gemini_client
 
     async def generate_topic(self) -> str:
+        category = helpers.get_random_category()
         response = await gemini_client.aio.models.generate_content(
             model=settings.gemini_lite_model,
-            contents=[prompts.topic_system],
+            contents=[Template(prompts.topic_system).substitute(category=category)],
             config=types.GenerateContentConfig(
-                temperature=1.0,
+                temperature=2.0,
+                top_p=0.90,
             ),
         )
         return response.text
