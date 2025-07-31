@@ -19,7 +19,6 @@ from app.models import (
     EpisodeCreate,
     EpisodeResult,
     EpisodeTaskInput,
-    EpisodeTopicCreate,
     EpisodeTopicResult,
     Podcast,
     PodcastCreate,
@@ -292,8 +291,6 @@ async def create_podcast_episode(
 
 
 @router.post("/{podcast_id}/topic", response_model=EpisodeTopicResult)
-async def create_podcast_topic(
-    req: EpisodeTopicCreate, podcast_id: int, user: UserCurrent, llm: LLMCurrent
-):
-    topic = await llm.generate_topic(req.format)
+async def create_podcast_topic(podcast_id: int, user: UserCurrent, llm: LLMCurrent):
+    topic = await llm.generate_topic()
     return EpisodeTopicResult(topic=topic)
