@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai import LLM, llm
+from app.ai.models import LLM, llm
 from app.core.database import async_session
 from app.core.security import (
     admin_api_key_header,
