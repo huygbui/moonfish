@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import joinedload
 
-from app.api.deps import SessionCurrent, UserCurrent
+from app.api.deps import LLMCurrent, SessionCurrent, UserCurrent
 from app.core.storage import (
     DeleteObject,
     S3Error,
@@ -19,6 +19,7 @@ from app.models import (
     EpisodeCreate,
     EpisodeResult,
     EpisodeTaskInput,
+    EpisodeTopicResult,
     Podcast,
     PodcastCreate,
     PodcastResult,
@@ -287,3 +288,9 @@ async def create_podcast_episode(
         raise HTTPException(status_code=500, detail="Episode generation failed")
 
     return episode
+
+
+@router.post("/{podcast_id}/topic", response_model=EpisodeTopicResult)
+def create_podcast_topic(podcast_id: int, user: UserCurrent, llm: LLMCurrent):
+    topic = llm.generate_topic()
+    return EpisodeTopicResult(topic=topic)

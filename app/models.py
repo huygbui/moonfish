@@ -286,6 +286,10 @@ class EpisodeAudioResult(BaseModel):
     url: str
 
 
+class EpisodeTopicResult(BaseModel):
+    topic: str
+
+
 # Podcast
 class PodcastCreate(BaseModel):
     title: str

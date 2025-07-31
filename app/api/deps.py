@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ai import LLM, llm
 from app.core.database import async_session
 from app.core.security import (
     admin_api_key_header,
@@ -74,3 +75,10 @@ async def get_client_key(api_key: Annotated[str, Security(client_api_key_header)
         raise HTTPException(status_code=403, detail="Invalid client API key")
 
     return api_key
+
+
+async def get_llm():
+    return llm
+
+
+LLMCurrent = Annotated[LLM, Depends(get_llm)]
