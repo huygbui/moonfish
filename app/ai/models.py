@@ -13,9 +13,15 @@ class LLM:
 
     async def generate_topic(self) -> str:
         category = helpers.get_random_category()
+        angle = helpers.get_random_angle()
         response = await gemini_client.aio.models.generate_content(
             model=settings.gemini_lite_model,
-            contents=[Template(prompts.topic_system).substitute(category=category)],
+            contents=[
+                Template(prompts.topic_system).substitute(
+                    angle=angle,
+                    category=category,
+                )
+            ],
             config=types.GenerateContentConfig(
                 temperature=2.0,
                 top_p=0.90,
