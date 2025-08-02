@@ -48,8 +48,9 @@ class SubscriptionTier(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tier: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     max_podcasts: Mapped[int] = mapped_column(Integer, nullable=False)
-    max_daily_episodes: Mapped[int] = mapped_column(Integer, nullable=False)
-    max_daily_extended_episodes: Mapped[int] = mapped_column(Integer, nullable=False)
+    daily_credit: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
