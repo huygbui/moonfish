@@ -17,6 +17,9 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/usage", response_model=UserUsageResult)
 async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsageResult:
+    credit_per_episode = 1
+    credit_per_extended_episode = 2
+
     today = date.today()
     tomorrow = today + timedelta(days=1)
 
@@ -53,13 +56,18 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
     await session.refresh(user, attribute_names=["subscription_tier"])
     tier = user.subscription_tier
 
+    daily_episode_credits = (row.daily_episodes or 0) * credit_per_episode
+    daily_extended_episode_credits = (
+        row.daily_extended_episodes or 0
+    ) * credit_per_extended_episode
+
     return UserUsageResult(
         podcasts=row.podcasts or 0,
-        daily_episodes=row.daily_episodes or 0,
-        daily_extended_episodes=row.daily_extended_episodes or 0,
+        daily_credits=daily_episode_credits + daily_extended_episode_credits,
         max_podcasts=tier.max_podcasts,
-        max_daily_episodes=tier.max_daily_episodes,
-        max_daily_extended_episodes=tier.max_daily_extended_episodes,
+        max_daily_credits=tier.max_daily_credits,
+        credit_per_episode=credit_per_episode,
+        credit_per_extended_episode=credit_per_extended_episode,
     )
 
 
