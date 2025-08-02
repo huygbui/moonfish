@@ -48,7 +48,7 @@ class SubscriptionTier(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tier: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     max_podcasts: Mapped[int] = mapped_column(Integer, nullable=False)
-    daily_credit: Mapped[int] = mapped_column(
+    max_daily_credits: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
 
@@ -203,24 +203,22 @@ class SubscriptionTierResult(BaseModel):
     id: int
     tier: Tier
     max_podcasts: int
-    max_daily_episodes: int
-    max_daily_extended_episodes: int
+    max_daily_credits: int
 
 
 class SubscriptionTierUpdate(BaseModel):
     max_podcasts: int | None = None
-    max_daily_episodes: int | None = None
-    max_daily_extended_episodes: int | None = None
+    max_daily_credits: int | None = None
 
 
 class UserUsageResult(BaseModel):
     podcasts: int
-    daily_episodes: int
-    daily_extended_episodes: int
+    daily_credits: int
 
     max_podcasts: int
-    max_daily_episodes: int
-    max_daily_extended_episodes: int
+    max_daily_credits: int
+    credit_per_episode: int
+    credit_per_extended_episode: int
 
 
 class UserTierUpdate(BaseModel):
