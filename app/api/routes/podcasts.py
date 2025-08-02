@@ -6,6 +6,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import LLMCurrent, SessionCurrent, UserCurrent
+from app.core.config import settings
 from app.core.storage import (
     DeleteObject,
     S3Error,
@@ -218,54 +219,63 @@ async def create_podcast_episode(
     user: UserCurrent,
     session: SessionCurrent,
 ):
+    credit_per_episode = settings.credit_per_episode
+    credit_per_extended_episode = settings.credit_per_extended_episode
+
     podcast = await session.get(Podcast, podcast_id)
     if not podcast or podcast.user_id != user.id:
         raise HTTPException(status_code=404, detail="Podcast not found")
 
-    # Check daily episode limits
+    # Check daily credit limits
     today = date.today()
     tomorrow = today + timedelta(days=1)
 
-    # Count today's episodes
-    daily_count = await session.scalar(
+    # Get current daily episode counts (similar to usage endpoint)
+    stmt = select(
         select(func.count())
         .select_from(Episode)
         .where(
             Episode.user_id == user.id,
             Episode.created_at >= today,
             Episode.created_at < tomorrow,
+            Episode.length != "long",
             Episode.status != "failed",
         )
+        .scalar_subquery()
+        .label("daily_episodes"),
+        select(func.count())
+        .select_from(Episode)
+        .where(
+            Episode.user_id == user.id,
+            Episode.created_at >= today,
+            Episode.created_at < tomorrow,
+            Episode.length == "long",
+            Episode.status != "failed",
+        )
+        .scalar_subquery()
+        .label("daily_extended_episodes"),
     )
+    row = (await session.execute(stmt)).one()
+
+    # Calculate current credits used
+    daily_episode_credits = (row.daily_episodes or 0) * credit_per_episode
+    daily_extended_episode_credits = (
+        row.daily_extended_episodes or 0
+    ) * credit_per_extended_episode
+    current_credits_used = daily_episode_credits + daily_extended_episode_credits
+
+    # Calculate credits needed for this episode
+    credits_needed = credit_per_extended_episode if req.length == "long" else credit_per_episode
 
     # Ensure subscription_tier is loaded
     await session.refresh(user, attribute_names=["subscription_tier"])
 
-    # Check total daily limit
-    if daily_count >= user.subscription_tier.max_daily_episodes:
+    # Check if user has enough credits
+    if current_credits_used + credits_needed > user.subscription_tier.max_daily_credits:
         raise HTTPException(
             status_code=403,
-            detail="Daily episode limit reached.",
+            detail="Daily credit limit exceeded.",
         )
-
-    if req.length == "long":
-        extended_count = await session.scalar(
-            select(func.count())
-            .select_from(Episode)
-            .where(
-                Episode.user_id == user.id,
-                Episode.created_at >= today,
-                Episode.created_at < tomorrow,
-                Episode.length == "long",
-                Episode.status != "failed",
-            )
-        )
-
-        if extended_count >= user.subscription_tier.max_daily_extended_episodes:
-            raise HTTPException(
-                status_code=403,
-                detail="Daily extended episode limit reached.",
-            )
 
     episode = Episode(
         **req.model_dump(),

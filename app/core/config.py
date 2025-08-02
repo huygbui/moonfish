@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     sentry_dsn: HttpUrl | None = None
     sentry_traces_sample_rate: float | None = None
 
+    credit_per_episode: int = 1
+    credit_per_extended_episode: int = 2
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sqlalchemy_url(self) -> PostgresDsn:

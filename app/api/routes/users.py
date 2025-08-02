@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import func, select
 
 from app.api.deps import SessionCurrent, UserCurrent
+from app.core.config import settings
 from app.models import (
     Episode,
     Podcast,
@@ -17,8 +18,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.get("/usage", response_model=UserUsageResult)
 async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsageResult:
-    credit_per_episode = 1
-    credit_per_extended_episode = 2
+    credit_per_episode = settings.credit_per_episode
+    credit_per_extended_episode = settings.credit_per_extended_episode
 
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -35,6 +36,7 @@ async def get_user_usage(user: UserCurrent, session: SessionCurrent) -> UserUsag
             Episode.user_id == user.id,
             Episode.created_at >= today,
             Episode.created_at < tomorrow,
+            Episode.length != "long",
             Episode.status != "failed",
         )
         .scalar_subquery()
